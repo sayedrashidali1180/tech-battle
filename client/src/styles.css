@@ -2383,7 +2383,7 @@ footer span {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 70px;
+  bottom: 150px;
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -2422,7 +2422,7 @@ footer span {
   }
 
   .home-content {
-    bottom: 40px;
+    bottom: 100px;
     padding: 0 18px;
   }
 
