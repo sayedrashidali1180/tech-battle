@@ -641,18 +641,9 @@ function App() {
           <div className="home-overlay" />
 
           <div className="home-content">
-            <div className="home-status">
-              <span className="home-status-dot" />
-              SERVER ONLINE
-            </div>
-
             <div className="home-subtitle">
               REAL-TIME MULTIPLAYER TECHNOLOGY QUIZ
             </div>
-
-            <p className="home-description">
-              The Tech Battle server is running and ready for players.
-            </p>
 
             <div className="button-stack">
               <button
