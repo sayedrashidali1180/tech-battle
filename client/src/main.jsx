@@ -18,6 +18,9 @@ import "./styles.css";
 const SERVER_URL =
   import.meta.env.VITE_SERVER_URL || "http://localhost:3000";
 
+const BACKGROUND_IMAGE_URL =
+  `${SERVER_URL}/assets/tech-battle-bg.jpg`;
+
 const socket = io(SERVER_URL, {
   autoConnect: false,
   reconnection: true,
@@ -629,38 +632,54 @@ function App() {
   if (screen === "home") {
     return (
       <Shell hideFooter>
-        <div className="hero">
-          <div className="logo">⚡</div>
+        <div
+          className="hero tech-battle-home"
+          style={{
+            backgroundImage: `url("${BACKGROUND_IMAGE_URL}")`
+          }}
+        >
+          <div className="home-overlay" />
 
-          <h1>Tech Battle</h1>
+          <div className="home-content">
+            <div className="home-status">
+              <span className="home-status-dot" />
+              SERVER ONLINE
+            </div>
 
-          <p>Real-time multiplayer technology quiz battle.</p>
+            <div className="home-subtitle">
+              REAL-TIME MULTIPLAYER TECHNOLOGY QUIZ
+            </div>
 
-          <div className="button-stack">
-            <button
-              onClick={() => {
-                setMode("create");
-                setError("");
-                setScreen("join");
-              }}
-            >
-              Create Room
-            </button>
+            <p className="home-description">
+              The Tech Battle server is running and ready for players.
+            </p>
 
-            <button
-              className="secondary"
-              onClick={() => {
-                setMode("join");
-                setError("");
-                setScreen("join");
-              }}
-            >
-              Join Room
-            </button>
+            <div className="button-stack">
+              <button
+                onClick={() => {
+                  setMode("create");
+                  setError("");
+                  setScreen("join");
+                }}
+              >
+                CREATE ROOM
+              </button>
 
-            <button className="ghost" onClick={() => setScreen("how")}>
-              How to Play
-            </button>
+              <button
+                className="secondary"
+                onClick={() => {
+                  setMode("join");
+                  setError("");
+                  setScreen("join");
+                }}
+              >
+                JOIN ROOM
+              </button>
+
+              <button className="ghost" onClick={() => setScreen("how")}>
+                HOW TO PLAY
+              </button>
+            </div>
           </div>
         </div>
       </Shell>
