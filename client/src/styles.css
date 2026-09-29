@@ -684,7 +684,7 @@ label {
     block;
 
   margin:
-    18px 0;
+    16px 0;
 
   color:
     #b8d2c9;
@@ -751,8 +751,18 @@ input::placeholder {
 
 
 /* ============================================================
+   CREATE / JOIN FORM CARD
+============================================================ */
+
+.form-card {
+  width: min(780px, 100%);
+}
+
+
+/* ============================================================
    QUIZ TYPE DROPDOWN
 ============================================================ */
+
 
 .quiz-type-select {
   position: relative;
@@ -829,6 +839,8 @@ input::placeholder {
 }
 
 .quiz-type-arrow {
+  position: relative;
+
   flex-shrink: 0;
 
   width: 30px;
@@ -840,14 +852,30 @@ input::placeholder {
   border: 1px solid rgba(0, 255, 154, 0.28);
   border-radius: 8px;
 
-  color: #00ff9a;
   background: rgba(0, 255, 154, 0.055);
 
-  font-size: 18px;
-  font-weight: 900;
-  line-height: 1;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    transform 0.2s ease;
+}
 
-  transition: 0.2s ease;
+.quiz-type-arrow::before {
+  content: "";
+
+  width: 7px;
+  height: 7px;
+
+  border-right: 2px solid #00ff9a;
+  border-bottom: 2px solid #00ff9a;
+
+  transform: rotate(45deg) translate(-2px, -2px);
+
+  transition: transform 0.2s ease;
+}
+
+.quiz-type-arrow.up::before {
+  transform: rotate(225deg) translate(-2px, -2px);
 }
 
 .quiz-type-trigger:hover .quiz-type-arrow,
@@ -983,6 +1011,10 @@ input::placeholder {
 }
 
 @media (max-width: 700px) {
+  .form-card {
+    width: 100%;
+  }
+
   .quiz-type-menu {
     max-height: 300px;
     overflow-y: auto;

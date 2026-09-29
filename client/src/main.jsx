@@ -730,7 +730,7 @@ function App() {
   if (screen === "how") {
     return (
       <Shell>
-        <Card>
+        <Card className="form-card">
           <div className="section-title">
             <span>📖</span>
             <h2>How to Play</h2>
@@ -881,9 +881,12 @@ function App() {
                   onClick={() => setQuizTypeOpen((open) => !open)}
                 >
                   <span>{QUIZ_TYPE_LABELS[quizType]}</span>
-                  <span className="quiz-type-arrow">
-                    {quizTypeOpen ? "⌃" : "⌄"}
-                  </span>
+                  <span
+                    className={`quiz-type-arrow ${
+                      quizTypeOpen ? "up" : ""
+                    }`}
+                    aria-hidden="true"
+                  />
                 </button>
 
                 {quizTypeOpen && (
