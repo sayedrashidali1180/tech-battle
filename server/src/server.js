@@ -4,91 +4,29 @@ import { createServer } from "http";
 import { Server } from "socket.io";
 import crypto from "crypto";
 
-
-// ============================================================
-// EXPRESS
-// ============================================================
-
 const app = express();
 
 app.use(cors());
-
 app.use(express.json());
-
-
-// ============================================================
-// HEALTH CHECK
-// ============================================================
-
-app.get("/health", (req, res) => {
-  res.json({
-    ok: true,
-    service: "Tech Battle server",
-    timestamp: Date.now()
-  });
-});
-
-
-// ============================================================
-// HTTP + SOCKET.IO
-// ============================================================
-
-const httpServer = createServer(app);
-
-const io = new Server(httpServer, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
-});
-
-
-// ============================================================
-// CONFIG
-// ============================================================
 
 const PORT = process.env.PORT || 3000;
 
 const MAX_PLAYERS = 8;
-
 const MIN_PLAYERS = 2;
 
 const QUESTION_TIME = 20_000;
-
 const COUNTDOWN_TIME = 3_000;
-
 const RESULTS_TIME = 3_000;
 
 const RECONNECT_GRACE = 60_000;
-
-const ROOM_IDLE_CLEANUP = 10 * 60_000; // delete finished rooms after 10 min
+const ROOM_IDLE_CLEANUP = 10 * 60_000;
 
 const STREAK_BONUS_PER_STEP = 10;
-
 const STREAK_BONUS_CAP = 50;
-
-
-// ============================================================
-// ROOM STORAGE
-// ============================================================
 
 const rooms = new Map();
 
-
-// ============================================================
-// ROOM CODE CHARACTERS
-//
-// Excludes confusing:
-// O / 0
-// I / 1
-// ============================================================
-
 const ROOM_CHARACTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-
-
-// ============================================================
-// CATEGORIES
-// ============================================================
 
 const CATEGORIES = [
   "programming",
@@ -101,133 +39,782 @@ const CATEGORIES = [
   "cybersecurity"
 ];
 
-
-// ============================================================
-// QUESTION BANK
-//
-// 72 curated questions: 8 categories x 3 difficulties x 3
-// questions each. The game-selection algorithm makes sure
-// all 8 categories appear and exactly 4 Easy, 4 Medium and
-// 2 Hard questions are chosen, picking randomly among the
-// available questions for each category/difficulty so that
-// repeated games don't feel identical.
-// ============================================================
+/* ============================================================
+   QUESTION BANK
+============================================================ */
 
 const QUESTION_BANK = [
-  // ---------------- PROGRAMMING ----------------
-  { id: "programming-easy-1", category: "programming", difficulty: "easy", text: "Which keyword defines a function in Python?", options: ["func", "def", "function", "define"], correctIndex: 1 },
-  { id: "programming-easy-2", category: "programming", difficulty: "easy", text: "Which symbol starts a comment in Python?", options: ["//", "#", "<!-- -->", "/* */"], correctIndex: 1 },
-  { id: "programming-easy-3", category: "programming", difficulty: "easy", text: "Which data type represents true/false values?", options: ["Integer", "Boolean", "String", "Float"], correctIndex: 1 },
 
-  { id: "programming-medium-1", category: "programming", difficulty: "medium", text: "What is the average-case lookup complexity of a hash table?", options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"], correctIndex: 0 },
-  { id: "programming-medium-2", category: "programming", difficulty: "medium", text: "What does the acronym 'API' stand for?", options: ["Application Programming Interface", "Automated Program Instruction", "Applied Programming Index", "Advanced Protocol Interface"], correctIndex: 0 },
-  { id: "programming-medium-3", category: "programming", difficulty: "medium", text: "Which sorting algorithm has average time complexity O(n log n)?", options: ["Bubble sort", "Merge sort", "Selection sort", "Insertion sort"], correctIndex: 1 },
+  // PROGRAMMING
+  {
+    id: "programming-easy-1",
+    category: "programming",
+    difficulty: "easy",
+    text: "Which keyword defines a function in Python?",
+    options: ["func", "def", "function", "define"],
+    correctIndex: 1
+  },
+  {
+    id: "programming-easy-2",
+    category: "programming",
+    difficulty: "easy",
+    text: "Which symbol starts a comment in Python?",
+    options: ["//", "#", "<!-- -->", "/* */"],
+    correctIndex: 1
+  },
+  {
+    id: "programming-easy-3",
+    category: "programming",
+    difficulty: "easy",
+    text: "Which data type represents true/false values?",
+    options: ["Integer", "Boolean", "String", "Float"],
+    correctIndex: 1
+  },
+  {
+    id: "programming-medium-1",
+    category: "programming",
+    difficulty: "medium",
+    text: "What is the average-case lookup complexity of a hash table?",
+    options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
+    correctIndex: 0
+  },
+  {
+    id: "programming-medium-2",
+    category: "programming",
+    difficulty: "medium",
+    text: "What does the acronym 'API' stand for?",
+    options: [
+      "Application Programming Interface",
+      "Automated Program Instruction",
+      "Applied Programming Index",
+      "Advanced Protocol Interface"
+    ],
+    correctIndex: 0
+  },
+  {
+    id: "programming-medium-3",
+    category: "programming",
+    difficulty: "medium",
+    text: "Which sorting algorithm has average time complexity O(n log n)?",
+    options: ["Bubble sort", "Merge sort", "Selection sort", "Insertion sort"],
+    correctIndex: 1
+  },
+  {
+    id: "programming-hard-1",
+    category: "programming",
+    difficulty: "hard",
+    text: "Which principle says software entities should be open for extension but closed for modification?",
+    options: ["DRY", "KISS", "Open/Closed Principle", "YAGNI"],
+    correctIndex: 2
+  },
+  {
+    id: "programming-hard-2",
+    category: "programming",
+    difficulty: "hard",
+    text: "What is a race condition?",
+    options: [
+      "A CPU scheduling algorithm",
+      "A bug from unsynchronized concurrent access to shared data",
+      "A network routing error",
+      "A type of memory leak"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "programming-hard-3",
+    category: "programming",
+    difficulty: "hard",
+    text: "Which design pattern restricts a class to a single instance?",
+    options: ["Factory", "Singleton", "Observer", "Decorator"],
+    correctIndex: 1
+  },
 
-  { id: "programming-hard-1", category: "programming", difficulty: "hard", text: "Which principle says software entities should be open for extension but closed for modification?", options: ["DRY", "KISS", "Open/Closed Principle", "YAGNI"], correctIndex: 2 },
-  { id: "programming-hard-2", category: "programming", difficulty: "hard", text: "What is a race condition?", options: ["A CPU scheduling algorithm", "A bug from unsynchronized concurrent access to shared data", "A network routing error", "A type of memory leak"], correctIndex: 1 },
-  { id: "programming-hard-3", category: "programming", difficulty: "hard", text: "Which design pattern restricts a class to a single instance?", options: ["Factory", "Singleton", "Observer", "Decorator"], correctIndex: 1 },
+  // AI
+  {
+    id: "ai-easy-1",
+    category: "ai",
+    difficulty: "easy",
+    text: "What does AI stand for?",
+    options: [
+      "Automated Interface",
+      "Artificial Intelligence",
+      "Applied Internet",
+      "Algorithmic Integration"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "ai-easy-2",
+    category: "ai",
+    difficulty: "easy",
+    text: "What is a 'dataset' in machine learning?",
+    options: [
+      "A programming language",
+      "A collection of data used to train models",
+      "A type of neural network",
+      "A cloud server"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "ai-easy-3",
+    category: "ai",
+    difficulty: "easy",
+    text: "Which company created ChatGPT?",
+    options: ["Google", "Anthropic", "OpenAI", "Meta"],
+    correctIndex: 2
+  },
+  {
+    id: "ai-medium-1",
+    category: "ai",
+    difficulty: "medium",
+    text: "Which type of machine learning uses labeled training examples?",
+    options: [
+      "Unsupervised learning",
+      "Reinforcement learning",
+      "Supervised learning",
+      "Random learning"
+    ],
+    correctIndex: 2
+  },
+  {
+    id: "ai-medium-2",
+    category: "ai",
+    difficulty: "medium",
+    text: "What is 'overfitting' in machine learning?",
+    options: [
+      "A model that performs well on new data",
+      "A model that memorizes training data but fails to generalize",
+      "A model with too few parameters",
+      "A model trained too quickly"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "ai-medium-3",
+    category: "ai",
+    difficulty: "medium",
+    text: "What does NLP stand for?",
+    options: [
+      "Natural Language Processing",
+      "Neural Learning Protocol",
+      "Network Layer Programming",
+      "Numeric Language Parsing"
+    ],
+    correctIndex: 0
+  },
+  {
+    id: "ai-hard-1",
+    category: "ai",
+    difficulty: "hard",
+    text: "Which activation function is commonly used in hidden layers of modern neural networks?",
+    options: ["ReLU", "Softmax", "Linear only", "Identity only"],
+    correctIndex: 0
+  },
+  {
+    id: "ai-hard-2",
+    category: "ai",
+    difficulty: "hard",
+    text: "Which technique reduces overfitting by randomly disabling neurons during training?",
+    options: ["Dropout", "Batch normalization", "Gradient clipping", "Pooling"],
+    correctIndex: 0
+  },
+  {
+    id: "ai-hard-3",
+    category: "ai",
+    difficulty: "hard",
+    text: "What is the core mechanism behind Transformer models?",
+    options: ["Convolution", "Recurrence", "Self-attention", "Pooling"],
+    correctIndex: 2
+  },
 
-  // ---------------- AI / ML ----------------
-  { id: "ai-easy-1", category: "ai", difficulty: "easy", text: "What does AI stand for?", options: ["Automated Interface", "Artificial Intelligence", "Applied Internet", "Algorithmic Integration"], correctIndex: 1 },
-  { id: "ai-easy-2", category: "ai", difficulty: "easy", text: "What is a 'dataset' in machine learning?", options: ["A programming language", "A collection of data used to train models", "A type of neural network", "A cloud server"], correctIndex: 1 },
-  { id: "ai-easy-3", category: "ai", difficulty: "easy", text: "Which company created ChatGPT?", options: ["Google", "Anthropic", "OpenAI", "Meta"], correctIndex: 2 },
+  // COMPUTER SCIENCE
+  {
+    id: "cs-easy-1",
+    category: "computer-science",
+    difficulty: "easy",
+    text: "What does CPU stand for?",
+    options: [
+      "Central Processing Unit",
+      "Computer Primary Utility",
+      "Core Program Unit",
+      "Central Program User"
+    ],
+    correctIndex: 0
+  },
+  {
+    id: "cs-easy-2",
+    category: "computer-science",
+    difficulty: "easy",
+    text: "What does RAM stand for?",
+    options: [
+      "Random Access Memory",
+      "Read Access Module",
+      "Rapid Application Method",
+      "Runtime Allocation Memory"
+    ],
+    correctIndex: 0
+  },
+  {
+    id: "cs-easy-3",
+    category: "computer-science",
+    difficulty: "easy",
+    text: "Which number system uses only 0s and 1s?",
+    options: ["Decimal", "Binary", "Hexadecimal", "Octal"],
+    correctIndex: 1
+  },
+  {
+    id: "cs-medium-1",
+    category: "computer-science",
+    difficulty: "medium",
+    text: "Which data structure follows FIFO ordering?",
+    options: ["Stack", "Queue", "Tree", "Heap"],
+    correctIndex: 1
+  },
+  {
+    id: "cs-medium-2",
+    category: "computer-science",
+    difficulty: "medium",
+    text: "Which data structure uses LIFO ordering?",
+    options: ["Queue", "Stack", "Array", "Linked list"],
+    correctIndex: 1
+  },
+  {
+    id: "cs-medium-3",
+    category: "computer-science",
+    difficulty: "medium",
+    text: "What is recursion?",
+    options: [
+      "A loop that never ends",
+      "A function that calls itself",
+      "A sorting algorithm",
+      "A type of variable"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "cs-hard-1",
+    category: "computer-science",
+    difficulty: "hard",
+    text: "What is the time complexity of binary search on a sorted array?",
+    options: ["O(1)", "O(log n)", "O(n)", "O(n²)"],
+    correctIndex: 1
+  },
+  {
+    id: "cs-hard-2",
+    category: "computer-science",
+    difficulty: "hard",
+    text: "What is the worst-case time complexity of quicksort?",
+    options: ["O(n log n)", "O(n)", "O(n²)", "O(log n)"],
+    correctIndex: 2
+  },
+  {
+    id: "cs-hard-3",
+    category: "computer-science",
+    difficulty: "hard",
+    text: "Which traversal visits a binary tree's root before its children?",
+    options: ["In-order", "Post-order", "Pre-order", "Level-order"],
+    correctIndex: 2
+  },
 
-  { id: "ai-medium-1", category: "ai", difficulty: "medium", text: "Which type of machine learning uses labeled training examples?", options: ["Unsupervised learning", "Reinforcement learning", "Supervised learning", "Random learning"], correctIndex: 2 },
-  { id: "ai-medium-2", category: "ai", difficulty: "medium", text: "What is 'overfitting' in machine learning?", options: ["A model that performs well on new data", "A model that memorizes training data but fails to generalize", "A model with too few parameters", "A model trained too quickly"], correctIndex: 1 },
-  { id: "ai-medium-3", category: "ai", difficulty: "medium", text: "What does NLP stand for?", options: ["Natural Language Processing", "Neural Learning Protocol", "Network Layer Programming", "Numeric Language Parsing"], correctIndex: 0 },
+  // DATABASES
+  {
+    id: "db-easy-1",
+    category: "databases",
+    difficulty: "easy",
+    text: "Which SQL command retrieves rows from a table?",
+    options: ["GET", "SELECT", "READ", "FETCHROW"],
+    correctIndex: 1
+  },
+  {
+    id: "db-easy-2",
+    category: "databases",
+    difficulty: "easy",
+    text: "What does SQL stand for?",
+    options: [
+      "Structured Query Language",
+      "Simple Query Logic",
+      "Sequential Query List",
+      "System Query Language"
+    ],
+    correctIndex: 0
+  },
+  {
+    id: "db-easy-3",
+    category: "databases",
+    difficulty: "easy",
+    text: "Which command adds new rows to a table?",
+    options: ["INSERT", "ADD", "APPEND", "CREATE"],
+    correctIndex: 0
+  },
+  {
+    id: "db-medium-1",
+    category: "databases",
+    difficulty: "medium",
+    text: "What does a primary key uniquely identify?",
+    options: ["A database", "A table", "A row in a table", "A SQL query"],
+    correctIndex: 2
+  },
+  {
+    id: "db-medium-2",
+    category: "databases",
+    difficulty: "medium",
+    text: "What does a foreign key do?",
+    options: [
+      "Encrypts a column",
+      "Links a row to a row in another table",
+      "Indexes a table for speed",
+      "Deletes duplicate rows"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "db-medium-3",
+    category: "databases",
+    difficulty: "medium",
+    text: "What type of database uses tables with rows and columns?",
+    options: ["Relational", "Document", "Graph", "Key-value"],
+    correctIndex: 0
+  },
+  {
+    id: "db-hard-1",
+    category: "databases",
+    difficulty: "hard",
+    text: "Which normal form removes transitive dependencies?",
+    options: ["1NF", "2NF", "3NF", "4NF"],
+    correctIndex: 2
+  },
+  {
+    id: "db-hard-2",
+    category: "databases",
+    difficulty: "hard",
+    text: "What does ACID stand for in database transactions?",
+    options: [
+      "Atomicity, Consistency, Isolation, Durability",
+      "Access, Control, Index, Data",
+      "Automatic Commit In Databases",
+      "Aggregation, Cache, Index, Durability"
+    ],
+    correctIndex: 0
+  },
+  {
+    id: "db-hard-3",
+    category: "databases",
+    difficulty: "hard",
+    text: "Which SQL clause combines rows from two tables based on a related column?",
+    options: ["WHERE", "JOIN", "GROUP BY", "UNION"],
+    correctIndex: 1
+  },
 
-  { id: "ai-hard-1", category: "ai", difficulty: "hard", text: "Which activation function is commonly used in hidden layers of modern neural networks?", options: ["ReLU", "Softmax", "Linear only", "Identity only"], correctIndex: 0 },
-  { id: "ai-hard-2", category: "ai", difficulty: "hard", text: "Which technique reduces overfitting by randomly disabling neurons during training?", options: ["Dropout", "Batch normalization", "Gradient clipping", "Pooling"], correctIndex: 0 },
-  { id: "ai-hard-3", category: "ai", difficulty: "hard", text: "What is the core mechanism behind Transformer models?", options: ["Convolution", "Recurrence", "Self-attention", "Pooling"], correctIndex: 2 },
+  // WEB DEVELOPMENT
+  {
+    id: "web-easy-1",
+    category: "web-development",
+    difficulty: "easy",
+    text: "Which language structures the content of a web page?",
+    options: ["HTML", "CSS", "SQL", "Bash"],
+    correctIndex: 0
+  },
+  {
+    id: "web-easy-2",
+    category: "web-development",
+    difficulty: "easy",
+    text: "Which language is primarily used to style web pages?",
+    options: ["HTML", "CSS", "SQL", "Python"],
+    correctIndex: 1
+  },
+  {
+    id: "web-easy-3",
+    category: "web-development",
+    difficulty: "easy",
+    text: "What does URL stand for?",
+    options: [
+      "Uniform Resource Locator",
+      "Universal Record Link",
+      "User Response Layer",
+      "Unified Retrieval Language"
+    ],
+    correctIndex: 0
+  },
+  {
+    id: "web-medium-1",
+    category: "web-development",
+    difficulty: "medium",
+    text: "Which HTTP method is conventionally used to create a resource?",
+    options: ["GET", "POST", "HEAD", "OPTIONS"],
+    correctIndex: 1
+  },
+  {
+    id: "web-medium-2",
+    category: "web-development",
+    difficulty: "medium",
+    text: "Which JavaScript concept lets a function remember variables from its outer scope?",
+    options: ["Hoisting", "Closure", "Promise", "Callback"],
+    correctIndex: 1
+  },
+  {
+    id: "web-medium-3",
+    category: "web-development",
+    difficulty: "medium",
+    text: "What does DOM stand for?",
+    options: [
+      "Document Object Model",
+      "Data Output Method",
+      "Dynamic Object Mapping",
+      "Document Ordering Module"
+    ],
+    correctIndex: 0
+  },
+  {
+    id: "web-hard-1",
+    category: "web-development",
+    difficulty: "hard",
+    text: "What does CORS primarily control?",
+    options: [
+      "Database indexing",
+      "Cross-origin browser requests",
+      "CPU scheduling",
+      "File compression"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "web-hard-2",
+    category: "web-development",
+    difficulty: "hard",
+    text: "Which HTTP status code indicates a resource was not found?",
+    options: ["200", "301", "404", "500"],
+    correctIndex: 2
+  },
+  {
+    id: "web-hard-3",
+    category: "web-development",
+    difficulty: "hard",
+    text: "What is the purpose of a JWT?",
+    options: [
+      "To style web pages",
+      "To securely transmit claims between parties as a token",
+      "To compress images",
+      "To query databases"
+    ],
+    correctIndex: 1
+  },
 
-  // ---------------- COMPUTER SCIENCE ----------------
-  { id: "cs-easy-1", category: "computer-science", difficulty: "easy", text: "What does CPU stand for?", options: ["Central Processing Unit", "Computer Primary Utility", "Core Program Unit", "Central Program User"], correctIndex: 0 },
-  { id: "cs-easy-2", category: "computer-science", difficulty: "easy", text: "What does RAM stand for?", options: ["Random Access Memory", "Read Access Module", "Rapid Application Method", "Runtime Allocation Memory"], correctIndex: 0 },
-  { id: "cs-easy-3", category: "computer-science", difficulty: "easy", text: "Which number system uses only 0s and 1s?", options: ["Decimal", "Binary", "Hexadecimal", "Octal"], correctIndex: 1 },
+  // NETWORKING
+  {
+    id: "networking-easy-1",
+    category: "networking",
+    difficulty: "easy",
+    text: "What does IP stand for?",
+    options: [
+      "Internet Protocol",
+      "Internal Port",
+      "Interface Process",
+      "Internet Provider"
+    ],
+    correctIndex: 0
+  },
+  {
+    id: "networking-easy-2",
+    category: "networking",
+    difficulty: "easy",
+    text: "What device connects multiple networks together?",
+    options: ["Router", "Monitor", "Keyboard", "Printer"],
+    correctIndex: 0
+  },
+  {
+    id: "networking-easy-3",
+    category: "networking",
+    difficulty: "easy",
+    text: "What does Wi-Fi primarily use to transmit data?",
+    options: ["Radio waves", "Sound waves", "Light waves", "Sound cables"],
+    correctIndex: 0
+  },
+  {
+    id: "networking-medium-1",
+    category: "networking",
+    difficulty: "medium",
+    text: "Which protocol translates domain names into IP addresses?",
+    options: ["DHCP", "DNS", "FTP", "SSH"],
+    correctIndex: 1
+  },
+  {
+    id: "networking-medium-2",
+    category: "networking",
+    difficulty: "medium",
+    text: "Which port does HTTPS typically use?",
+    options: ["21", "80", "443", "8080"],
+    correctIndex: 2
+  },
+  {
+    id: "networking-medium-3",
+    category: "networking",
+    difficulty: "medium",
+    text: "What does VPN stand for?",
+    options: [
+      "Virtual Private Network",
+      "Verified Public Network",
+      "Virtual Personal Node",
+      "Variable Packet Network"
+    ],
+    correctIndex: 0
+  },
+  {
+    id: "networking-hard-1",
+    category: "networking",
+    difficulty: "hard",
+    text: "Which transport protocol provides reliable and ordered delivery?",
+    options: ["UDP", "ICMP", "TCP", "ARP"],
+    correctIndex: 2
+  },
+  {
+    id: "networking-hard-2",
+    category: "networking",
+    difficulty: "hard",
+    text: "Which layer of the OSI model handles routing between networks?",
+    options: ["Data link", "Network", "Transport", "Session"],
+    correctIndex: 1
+  },
+  {
+    id: "networking-hard-3",
+    category: "networking",
+    difficulty: "hard",
+    text: "What does a subnet mask do?",
+    options: [
+      "Encrypts network traffic",
+      "Divides an IP network into subnetworks",
+      "Assigns MAC addresses",
+      "Blocks malicious traffic"
+    ],
+    correctIndex: 1
+  },
 
-  { id: "cs-medium-1", category: "computer-science", difficulty: "medium", text: "Which data structure follows FIFO ordering?", options: ["Stack", "Queue", "Tree", "Heap"], correctIndex: 1 },
-  { id: "cs-medium-2", category: "computer-science", difficulty: "medium", text: "Which data structure uses LIFO ordering?", options: ["Queue", "Stack", "Array", "Linked list"], correctIndex: 1 },
-  { id: "cs-medium-3", category: "computer-science", difficulty: "medium", text: "What is recursion?", options: ["A loop that never ends", "A function that calls itself", "A sorting algorithm", "A type of variable"], correctIndex: 1 },
+  // CLOUD
+  {
+    id: "cloud-easy-1",
+    category: "cloud",
+    difficulty: "easy",
+    text: "Which cloud service model provides virtualized computing resources?",
+    options: ["IaaS", "SaaS", "LAN", "DNS"],
+    correctIndex: 0
+  },
+  {
+    id: "cloud-easy-2",
+    category: "cloud",
+    difficulty: "easy",
+    text: "What does SaaS deliver to users?",
+    options: [
+      "Raw hardware",
+      "Software over the internet",
+      "Only storage",
+      "Only networking"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "cloud-easy-3",
+    category: "cloud",
+    difficulty: "easy",
+    text: "Which company operates AWS?",
+    options: ["Google", "Microsoft", "Amazon", "IBM"],
+    correctIndex: 2
+  },
+  {
+    id: "cloud-medium-1",
+    category: "cloud",
+    difficulty: "medium",
+    text: "Which cloud property allows resources to scale with demand?",
+    options: ["Elasticity", "Normalization", "Compilation", "Locality"],
+    correctIndex: 0
+  },
+  {
+    id: "cloud-medium-2",
+    category: "cloud",
+    difficulty: "medium",
+    text: "What is a 'region' in cloud computing?",
+    options: [
+      "A single server",
+      "A geographic area containing data centers",
+      "A type of database",
+      "A pricing tier"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "cloud-medium-3",
+    category: "cloud",
+    difficulty: "medium",
+    text: "What does 'serverless' computing mean?",
+    options: [
+      "There are no servers anywhere",
+      "Developers don't manage the underlying servers",
+      "It only runs on local machines",
+      "It requires manual server provisioning"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "cloud-hard-1",
+    category: "cloud",
+    difficulty: "hard",
+    text: "Which service model provides a managed application platform?",
+    options: ["IaaS", "PaaS", "DNS", "LAN"],
+    correctIndex: 1
+  },
+  {
+    id: "cloud-hard-2",
+    category: "cloud",
+    difficulty: "hard",
+    text: "What is a key benefit of container orchestration tools like Kubernetes?",
+    options: [
+      "Manual scaling only",
+      "Automated deployment, scaling, and management of containers",
+      "Faster internet speed",
+      "Cheaper electricity bills"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "cloud-hard-3",
+    category: "cloud",
+    difficulty: "hard",
+    text: "What does 'multi-tenancy' mean in cloud architecture?",
+    options: [
+      "One customer per physical server",
+      "Multiple customers sharing the same infrastructure securely",
+      "Servers located in multiple countries",
+      "Backup servers only"
+    ],
+    correctIndex: 1
+  },
 
-  { id: "cs-hard-1", category: "computer-science", difficulty: "hard", text: "What is the time complexity of binary search on a sorted array?", options: ["O(1)", "O(log n)", "O(n)", "O(n²)"], correctIndex: 1 },
-  { id: "cs-hard-2", category: "computer-science", difficulty: "hard", text: "What is the worst-case time complexity of quicksort?", options: ["O(n log n)", "O(n)", "O(n²)", "O(log n)"], correctIndex: 2 },
-  { id: "cs-hard-3", category: "computer-science", difficulty: "hard", text: "Which traversal visits a binary tree's root before its children?", options: ["In-order", "Post-order", "Pre-order", "Level-order"], correctIndex: 2 },
-
-  // ---------------- DATABASES ----------------
-  { id: "db-easy-1", category: "databases", difficulty: "easy", text: "Which SQL command retrieves rows from a table?", options: ["GET", "SELECT", "READ", "FETCHROW"], correctIndex: 1 },
-  { id: "db-easy-2", category: "databases", difficulty: "easy", text: "What does SQL stand for?", options: ["Structured Query Language", "Simple Query Logic", "Sequential Query List", "System Query Language"], correctIndex: 0 },
-  { id: "db-easy-3", category: "databases", difficulty: "easy", text: "Which command adds new rows to a table?", options: ["INSERT", "ADD", "APPEND", "CREATE"], correctIndex: 0 },
-
-  { id: "db-medium-1", category: "databases", difficulty: "medium", text: "What does a primary key uniquely identify?", options: ["A database", "A table", "A row in a table", "A SQL query"], correctIndex: 2 },
-  { id: "db-medium-2", category: "databases", difficulty: "medium", text: "What does a foreign key do?", options: ["Encrypts a column", "Links a row to a row in another table", "Indexes a table for speed", "Deletes duplicate rows"], correctIndex: 1 },
-  { id: "db-medium-3", category: "databases", difficulty: "medium", text: "What type of database uses tables with rows and columns?", options: ["Relational", "Document", "Graph", "Key-value"], correctIndex: 0 },
-
-  { id: "db-hard-1", category: "databases", difficulty: "hard", text: "Which normal form removes transitive dependencies?", options: ["1NF", "2NF", "3NF", "4NF"], correctIndex: 2 },
-  { id: "db-hard-2", category: "databases", difficulty: "hard", text: "What does ACID stand for in database transactions?", options: ["Atomicity, Consistency, Isolation, Durability", "Access, Control, Index, Data", "Automatic Commit In Databases", "Aggregation, Cache, Index, Durability"], correctIndex: 0 },
-  { id: "db-hard-3", category: "databases", difficulty: "hard", text: "Which SQL clause combines rows from two tables based on a related column?", options: ["WHERE", "JOIN", "GROUP BY", "UNION"], correctIndex: 1 },
-
-  // ---------------- WEB DEVELOPMENT ----------------
-  { id: "web-easy-1", category: "web-development", difficulty: "easy", text: "Which language structures the content of a web page?", options: ["HTML", "CSS", "SQL", "Bash"], correctIndex: 0 },
-  { id: "web-easy-2", category: "web-development", difficulty: "easy", text: "Which language is primarily used to style web pages?", options: ["HTML", "CSS", "SQL", "Python"], correctIndex: 1 },
-  { id: "web-easy-3", category: "web-development", difficulty: "easy", text: "What does URL stand for?", options: ["Uniform Resource Locator", "Universal Record Link", "User Response Layer", "Unified Retrieval Language"], correctIndex: 0 },
-
-  { id: "web-medium-1", category: "web-development", difficulty: "medium", text: "Which HTTP method is conventionally used to create a resource?", options: ["GET", "POST", "HEAD", "OPTIONS"], correctIndex: 1 },
-  { id: "web-medium-2", category: "web-development", difficulty: "medium", text: "Which JavaScript concept lets a function remember variables from its outer scope?", options: ["Hoisting", "Closure", "Promise", "Callback"], correctIndex: 1 },
-  { id: "web-medium-3", category: "web-development", difficulty: "medium", text: "What does DOM stand for?", options: ["Document Object Model", "Data Output Method", "Dynamic Object Mapping", "Document Ordering Module"], correctIndex: 0 },
-
-  { id: "web-hard-1", category: "web-development", difficulty: "hard", text: "What does CORS primarily control?", options: ["Database indexing", "Cross-origin browser requests", "CPU scheduling", "File compression"], correctIndex: 1 },
-  { id: "web-hard-2", category: "web-development", difficulty: "hard", text: "Which HTTP status code indicates a resource was not found?", options: ["200", "301", "404", "500"], correctIndex: 2 },
-  { id: "web-hard-3", category: "web-development", difficulty: "hard", text: "What is the purpose of a JWT?", options: ["To style web pages", "To securely transmit claims between parties as a token", "To compress images", "To query databases"], correctIndex: 1 },
-
-  // ---------------- NETWORKING ----------------
-  { id: "networking-easy-1", category: "networking", difficulty: "easy", text: "What does IP stand for?", options: ["Internet Protocol", "Internal Port", "Interface Process", "Internet Provider"], correctIndex: 0 },
-  { id: "networking-easy-2", category: "networking", difficulty: "easy", text: "What device connects multiple networks together?", options: ["Router", "Monitor", "Keyboard", "Printer"], correctIndex: 0 },
-  { id: "networking-easy-3", category: "networking", difficulty: "easy", text: "What does Wi-Fi primarily use to transmit data?", options: ["Radio waves", "Sound waves", "Light waves", "Sound cables"], correctIndex: 0 },
-
-  { id: "networking-medium-1", category: "networking", difficulty: "medium", text: "Which protocol translates domain names into IP addresses?", options: ["DHCP", "DNS", "FTP", "SSH"], correctIndex: 1 },
-  { id: "networking-medium-2", category: "networking", difficulty: "medium", text: "Which port does HTTPS typically use?", options: ["21", "80", "443", "8080"], correctIndex: 2 },
-  { id: "networking-medium-3", category: "networking", difficulty: "medium", text: "What does VPN stand for?", options: ["Virtual Private Network", "Verified Public Network", "Virtual Personal Node", "Variable Packet Network"], correctIndex: 0 },
-
-  { id: "networking-hard-1", category: "networking", difficulty: "hard", text: "Which transport protocol provides reliable and ordered delivery?", options: ["UDP", "ICMP", "TCP", "ARP"], correctIndex: 2 },
-  { id: "networking-hard-2", category: "networking", difficulty: "hard", text: "Which layer of the OSI model handles routing between networks?", options: ["Data link", "Network", "Transport", "Session"], correctIndex: 1 },
-  { id: "networking-hard-3", category: "networking", difficulty: "hard", text: "What does a subnet mask do?", options: ["Encrypts network traffic", "Divides an IP network into subnetworks", "Assigns MAC addresses", "Blocks malicious traffic"], correctIndex: 1 },
-
-  // ---------------- CLOUD ----------------
-  { id: "cloud-easy-1", category: "cloud", difficulty: "easy", text: "Which cloud service model provides virtualized computing resources?", options: ["IaaS", "SaaS", "LAN", "DNS"], correctIndex: 0 },
-  { id: "cloud-easy-2", category: "cloud", difficulty: "easy", text: "What does SaaS deliver to users?", options: ["Raw hardware", "Software over the internet", "Only storage", "Only networking"], correctIndex: 1 },
-  { id: "cloud-easy-3", category: "cloud", difficulty: "easy", text: "Which company operates AWS?", options: ["Google", "Microsoft", "Amazon", "IBM"], correctIndex: 2 },
-
-  { id: "cloud-medium-1", category: "cloud", difficulty: "medium", text: "Which cloud property allows resources to scale with demand?", options: ["Elasticity", "Normalization", "Compilation", "Locality"], correctIndex: 0 },
-  { id: "cloud-medium-2", category: "cloud", difficulty: "medium", text: "What is a 'region' in cloud computing?", options: ["A single server", "A geographic area containing data centers", "A type of database", "A pricing tier"], correctIndex: 1 },
-  { id: "cloud-medium-3", category: "cloud", difficulty: "medium", text: "What does 'serverless' computing mean?", options: ["There are no servers anywhere", "Developers don't manage the underlying servers", "It only runs on local machines", "It requires manual server provisioning"], correctIndex: 1 },
-
-  { id: "cloud-hard-1", category: "cloud", difficulty: "hard", text: "Which service model provides a managed application platform?", options: ["IaaS", "PaaS", "DNS", "LAN"], correctIndex: 1 },
-  { id: "cloud-hard-2", category: "cloud", difficulty: "hard", text: "What is a key benefit of container orchestration tools like Kubernetes?", options: ["Manual scaling only", "Automated deployment, scaling, and management of containers", "Faster internet speed", "Cheaper electricity bills"], correctIndex: 1 },
-  { id: "cloud-hard-3", category: "cloud", difficulty: "hard", text: "What does 'multi-tenancy' mean in cloud architecture?", options: ["One customer per physical server", "Multiple customers sharing the same infrastructure securely", "Servers located in multiple countries", "Backup servers only"], correctIndex: 1 },
-
-  // ---------------- CYBERSECURITY ----------------
-  { id: "security-easy-1", category: "cybersecurity", difficulty: "easy", text: "What is phishing?", options: ["A backup method", "A social-engineering attack", "A routing protocol", "A compression algorithm"], correctIndex: 1 },
-  { id: "security-easy-2", category: "cybersecurity", difficulty: "easy", text: "What is a firewall used for?", options: ["Speeding up internet", "Filtering network traffic for security", "Storing passwords", "Compressing files"], correctIndex: 1 },
-  { id: "security-easy-3", category: "cybersecurity", difficulty: "easy", text: "What does 2FA stand for?", options: ["Two-Factor Authentication", "Two-File Access", "Twice Fast Authorization", "Two-Frame Analysis"], correctIndex: 0 },
-
-  { id: "security-medium-1", category: "cybersecurity", difficulty: "medium", text: "Which principle gives users only the permissions they need?", options: ["Least privilege", "Fail-open", "Replication", "Obfuscation"], correctIndex: 0 },
-  { id: "security-medium-2", category: "cybersecurity", difficulty: "medium", text: "What is malware?", options: ["Malicious software designed to harm systems", "A hardware component", "A networking protocol", "A database query"], correctIndex: 0 },
-  { id: "security-medium-3", category: "cybersecurity", difficulty: "medium", text: "What is a VPN primarily used for in security?", options: ["Speeding up downloads", "Encrypting and securing network traffic", "Compressing files", "Blocking all internet access"], correctIndex: 1 },
-
-  { id: "security-hard-1", category: "cybersecurity", difficulty: "hard", text: "Which attack injects untrusted input into a database query?", options: ["SQL injection", "ARP spoofing", "DDoS", "Packet fragmentation"], correctIndex: 0 },
-  { id: "security-hard-2", category: "cybersecurity", difficulty: "hard", text: "What is a 'zero-day' vulnerability?", options: ["A bug fixed the same day it's found", "A flaw unknown to the vendor with no available patch", "A vulnerability only in old software", "A type of firewall rule"], correctIndex: 1 },
-  { id: "security-hard-3", category: "cybersecurity", difficulty: "hard", text: "What does encryption 'at rest' protect?", options: ["Data while being typed", "Data stored on disk", "Data displayed on screen", "Data in browser cache"], correctIndex: 1 }
+  // CYBERSECURITY
+  {
+    id: "security-easy-1",
+    category: "cybersecurity",
+    difficulty: "easy",
+    text: "What is phishing?",
+    options: [
+      "A backup method",
+      "A social-engineering attack",
+      "A routing protocol",
+      "A compression algorithm"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "security-easy-2",
+    category: "cybersecurity",
+    difficulty: "easy",
+    text: "What is a firewall used for?",
+    options: [
+      "Speeding up internet",
+      "Filtering network traffic for security",
+      "Storing passwords",
+      "Compressing files"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "security-easy-3",
+    category: "cybersecurity",
+    difficulty: "easy",
+    text: "What does 2FA stand for?",
+    options: [
+      "Two-Factor Authentication",
+      "Two-File Access",
+      "Twice Fast Authorization",
+      "Two-Frame Analysis"
+    ],
+    correctIndex: 0
+  },
+  {
+    id: "security-medium-1",
+    category: "cybersecurity",
+    difficulty: "medium",
+    text: "Which principle gives users only the permissions they need?",
+    options: [
+      "Least privilege",
+      "Fail-open",
+      "Replication",
+      "Obfuscation"
+    ],
+    correctIndex: 0
+  },
+  {
+    id: "security-medium-2",
+    category: "cybersecurity",
+    difficulty: "medium",
+    text: "What is malware?",
+    options: [
+      "Malicious software designed to harm systems",
+      "A hardware component",
+      "A networking protocol",
+      "A database query"
+    ],
+    correctIndex: 0
+  },
+  {
+    id: "security-medium-3",
+    category: "cybersecurity",
+    difficulty: "medium",
+    text: "What is a VPN primarily used for in security?",
+    options: [
+      "Speeding up downloads",
+      "Encrypting and securing network traffic",
+      "Compressing files",
+      "Blocking all internet access"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "security-hard-1",
+    category: "cybersecurity",
+    difficulty: "hard",
+    text: "Which attack injects untrusted input into a database query?",
+    options: [
+      "SQL injection",
+      "ARP spoofing",
+      "DDoS",
+      "Packet fragmentation"
+    ],
+    correctIndex: 0
+  },
+  {
+    id: "security-hard-2",
+    category: "cybersecurity",
+    difficulty: "hard",
+    text: "What is a 'zero-day' vulnerability?",
+    options: [
+      "A bug fixed the same day it's found",
+      "A flaw unknown to the vendor with no available patch",
+      "A vulnerability only in old software",
+      "A type of firewall rule"
+    ],
+    correctIndex: 1
+  },
+  {
+    id: "security-hard-3",
+    category: "cybersecurity",
+    difficulty: "hard",
+    text: "What does encryption 'at rest' protect?",
+    options: [
+      "Data while being typed",
+      "Data stored on disk",
+      "Data displayed on screen",
+      "Data in browser cache"
+    ],
+    correctIndex: 1
+  }
 ];
 
-
-// ============================================================
-// UTILITY FUNCTIONS
-// ============================================================
+/* ============================================================
+   UTILITY FUNCTIONS
+============================================================ */
 
 function randomId() {
   return crypto.randomUUID();
 }
-
 
 function shuffle(array) {
   const result = [...array];
@@ -241,9 +828,10 @@ function shuffle(array) {
   return result;
 }
 
-
 function cleanName(value) {
-  const name = String(value || "").trim().replace(/\s+/g, " ");
+  const name = String(value || "")
+    .trim()
+    .replace(/\s+/g, " ");
 
   if (name.length < 2 || name.length > 16) {
     return null;
@@ -256,11 +844,9 @@ function cleanName(value) {
   return name;
 }
 
-
 function normalizeRoomCode(value) {
   return String(value || "").trim().toUpperCase();
 }
-
 
 function generateRoomCode() {
   let code;
@@ -269,7 +855,9 @@ function generateRoomCode() {
     code = "";
 
     for (let i = 0; i < 6; i++) {
-      const index = Math.floor(Math.random() * ROOM_CHARACTERS.length);
+      const index = Math.floor(
+        Math.random() * ROOM_CHARACTERS.length
+      );
 
       code += ROOM_CHARACTERS[index];
     }
@@ -278,24 +866,22 @@ function generateRoomCode() {
   return code;
 }
 
-
-// ============================================================
-// QUESTION SELECTION
-//
-// 1. Choose all 8 categories, then randomly repeat 2 of them.
-// 2. Assign exactly 4 Easy, 4 Medium, 2 Hard slots.
-// 3. For each category/difficulty pick a RANDOM question from
-//    the bank (not always the same one), then shuffle its
-//    answer options and remap correctIndex so the answer
-//    position changes every game too.
-// ============================================================
+/* ============================================================
+   QUESTION SELECTION
+============================================================ */
 
 function shuffleQuestionOptions(question) {
-  const order = shuffle(question.options.map((_, index) => index));
+  const order = shuffle(
+    question.options.map((_, index) => index)
+  );
 
-  const options = order.map((originalIndex) => question.options[originalIndex]);
+  const options = order.map(
+    (originalIndex) => question.options[originalIndex]
+  );
 
-  const correctIndex = order.indexOf(question.correctIndex);
+  const correctIndex = order.indexOf(
+    question.correctIndex
+  );
 
   return {
     id: question.id,
@@ -307,20 +893,32 @@ function shuffleQuestionOptions(question) {
   };
 }
 
-
 function createGameQuestions() {
   const repeatedCategories = shuffle(CATEGORIES).slice(0, 2);
 
-  const categorySlots = shuffle([...CATEGORIES, ...repeatedCategories]);
+  const categorySlots = shuffle([
+    ...CATEGORIES,
+    ...repeatedCategories
+  ]);
 
-  const difficultyPool = ["easy", "easy", "easy", "easy", "medium", "medium", "medium", "medium", "hard", "hard"];
+  const difficultyPool = [
+    "easy",
+    "easy",
+    "easy",
+    "easy",
+    "medium",
+    "medium",
+    "medium",
+    "medium",
+    "hard",
+    "hard"
+  ];
 
   const assignments = [];
 
   const usedQuestionIds = new Set();
 
   const usedCategoryDifficulty = new Set();
-
 
   function solve(index, remainingDifficulties) {
     if (index >= categorySlots.length) {
@@ -359,16 +957,20 @@ function createGameQuestions() {
 
       usedQuestionIds.add(question.id);
 
-      const nextRemaining = [...remainingDifficulties];
+      const nextRemaining = [
+        ...remainingDifficulties
+      ];
 
-      nextRemaining.splice(nextRemaining.indexOf(difficulty), 1);
+      nextRemaining.splice(
+        nextRemaining.indexOf(difficulty),
+        1
+      );
 
       if (solve(index + 1, nextRemaining)) {
         return true;
       }
 
       usedCategoryDifficulty.delete(key);
-
       usedQuestionIds.delete(question.id);
 
       assignments[index] = null;
@@ -377,68 +979,41 @@ function createGameQuestions() {
     return false;
   }
 
-
   const solved = solve(0, difficultyPool);
 
   if (!solved) {
-    throw new Error("Unable to create question set.");
+    throw new Error(
+      "Unable to create question set."
+    );
   }
 
-
-  return shuffle(assignments).map(shuffleQuestionOptions);
+  return shuffle(assignments).map(
+    shuffleQuestionOptions
+  );
 }
 
-
-// ============================================================
-// PUBLIC ROOM STATE
-// ============================================================
-
-function publicRoomState(room) {
-  const players = [...room.players.values()]
-    .filter((player) => player.active)
-    .map((player) => ({
-      id: player.id,
-      name: player.name,
-      connected: player.connected,
-      active: player.active,
-      score: player.score,
-      streak: player.streak,
-      isHost: player.id === room.hostPlayerId
-    }));
-
-  return {
-    code: room.code,
-    status: room.status,
-    hostPlayerId: room.hostPlayerId,
-    players,
-    currentQuestion: room.currentQuestionIndex,
-    answeredCount: room.answers.size,
-    connectedAnswerCount: getConnectedPlayers(room).filter((player) => room.answers.has(player.id)).length,
-    questionEndsAt: room.questionEndsAt
-  };
-}
-
-
-// ============================================================
-// CONNECTED / ACTIVE PLAYERS
-// ============================================================
+/* ============================================================
+   PLAYER HELPERS
+============================================================ */
 
 function getConnectedPlayers(room) {
-  return [...room.players.values()].filter((player) => player.active && player.connected);
+  return [...room.players.values()].filter(
+    (player) =>
+      player.active &&
+      player.connected
+  );
 }
-
 
 function getActivePlayers(room) {
-  return [...room.players.values()].filter((player) => player.active);
+  return [...room.players.values()].filter(
+    (player) => player.active
+  );
 }
 
-
-// ============================================================
-// HOST TRANSFER
-// ============================================================
-
 function transferHost(room) {
-  const newHost = getConnectedPlayers(room)[0] || getActivePlayers(room)[0];
+  const newHost =
+    getConnectedPlayers(room)[0] ||
+    getActivePlayers(room)[0];
 
   if (!newHost) {
     return null;
@@ -449,30 +1024,73 @@ function transferHost(room) {
   return newHost;
 }
 
+/* ============================================================
+   ROOM STATE
+============================================================ */
 
-// ============================================================
-// ROOM BROADCAST
-// ============================================================
+function publicRoomState(room) {
+  const players = [
+    ...room.players.values()
+  ]
+    .filter((player) => player.active)
+    .map((player) => ({
+      id: player.id,
+      name: player.name,
+      connected: player.connected,
+      active: player.active,
+      score: player.score,
+      streak: player.streak,
+      isHost:
+        player.id === room.hostPlayerId
+    }));
 
-function broadcastRoom(room) {
-  io.to(room.code).emit("room_state", publicRoomState(room));
+  return {
+    code: room.code,
+    status: room.status,
+    hostPlayerId: room.hostPlayerId,
+    players,
+    currentQuestion:
+      room.currentQuestionIndex,
+    answeredCount:
+      room.answers.size,
+    connectedAnswerCount:
+      getConnectedPlayers(room).filter(
+        (player) =>
+          room.answers.has(player.id)
+      ).length,
+    questionEndsAt:
+      room.questionEndsAt
+  };
 }
 
+function broadcastRoom(room) {
+  io.to(room.code).emit(
+    "room_state",
+    publicRoomState(room)
+  );
+}
 
-// ============================================================
-// SAFE QUESTION (never send correctIndex; personalize per player)
-// ============================================================
+/* ============================================================
+   SAFE QUESTION
+============================================================ */
 
 function safeQuestion(room, player) {
-  const question = room.questions[room.currentQuestionIndex];
+  const question =
+    room.questions[
+      room.currentQuestionIndex
+    ];
 
   if (!question) {
     return null;
   }
 
-  const existingAnswer = room.answers.get(player?.id);
+  const existingAnswer =
+    room.answers.get(player?.id);
 
-  const eliminated = player ? room.eliminations.get(player.id) || [] : [];
+  const eliminated =
+    player
+      ? room.eliminations.get(player.id) || []
+      : [];
 
   return {
     id: question.id,
@@ -480,57 +1098,125 @@ function safeQuestion(room, player) {
     difficulty: question.difficulty,
     text: question.text,
     options: question.options,
-    number: room.currentQuestionIndex + 1,
+
+    number:
+      room.currentQuestionIndex + 1,
+
     total: room.questions.length,
-    startsAt: room.questionStartsAt,
-    endsAt: room.questionEndsAt,
-    answeredCount: room.answers.size,
-    alreadyAnswered: Boolean(existingAnswer),
-    selectedIndex: existingAnswer?.index ?? null,
-    streak: player?.streak || 0,
-    eliminatedOptions: eliminated,
+
+    startsAt:
+      room.questionStartsAt,
+
+    endsAt:
+      room.questionEndsAt,
+
+    answeredCount:
+      room.answers.size,
+
+    alreadyAnswered:
+      Boolean(existingAnswer),
+
+    selectedIndex:
+      existingAnswer?.index ?? null,
+
+    streak:
+      player?.streak || 0,
+
+    eliminatedOptions:
+      eliminated,
+
     powerups: player
       ? {
-          fiftyFiftyAvailable: player.powerups.fiftyFifty,
-          doublePointsAvailable: player.powerups.doublePoints,
-          doublePointsActive: player.doublePointsActive
+          fiftyFiftyAvailable:
+            player.powerups.fiftyFifty,
+
+          doublePointsAvailable:
+            player.powerups.doublePoints,
+
+          doublePointsActive:
+            player.doublePointsActive
         }
       : null
   };
 }
 
+/* ============================================================
+   SEND CURRENT STATE
+============================================================ */
 
-// ============================================================
-// SEND CURRENT STATE TO ONE PLAYER (used on reconnect)
-// ============================================================
+function sendCurrentState(
+  socket,
+  room,
+  player
+) {
+  socket.emit(
+    "room_state",
+    publicRoomState(room)
+  );
 
-function sendCurrentState(socket, room, player) {
-  socket.emit("room_state", publicRoomState(room));
+  if (
+    room.status === "countdown" &&
+    room.countdownEndsAt
+  ) {
+    socket.emit("countdown", {
+      endsAt:
+        room.countdownEndsAt
+    });
 
-  if (room.status === "countdown" && room.countdownEndsAt) {
-    socket.emit("countdown", { endsAt: room.countdownEndsAt });
     return;
   }
 
   if (room.status === "question") {
-    socket.emit("question", safeQuestion(room, player));
+    socket.emit(
+      "question",
+      safeQuestion(room, player)
+    );
+
     return;
   }
 
-  if (room.status === "results" && room.lastResults) {
-    socket.emit("question_results", room.lastResults);
+  if (
+    room.status === "results" &&
+    room.lastResults
+  ) {
+    socket.emit(
+      "question_results",
+      room.lastResults
+    );
+
     return;
   }
 
-  if (room.status === "finished" && room.finalResults) {
-    socket.emit("game_finished", room.finalResults);
+  if (
+    room.status === "finished" &&
+    room.finalResults
+  ) {
+    socket.emit(
+      "game_finished",
+      room.finalResults
+    );
   }
 }
 
+/* ============================================================
+   CLEAR TIMERS
+============================================================ */
 
-// ============================================================
-// START COUNTDOWN
-// ============================================================
+function clearRoomTimers(room) {
+  if (room.timer) {
+    clearTimeout(room.timer);
+    room.timer = null;
+  }
+
+  if (room.cleanupTimer) {
+    clearTimeout(room.cleanupTimer);
+    room.cleanupTimer = null;
+  }
+}
+
+/* ============================================================
+   START COUNTDOWN
+============================================================ */
 
 function startCountdown(room) {
   clearRoomTimers(room);
@@ -539,30 +1225,40 @@ function startCountdown(room) {
 
   room.currentQuestionIndex = -1;
 
-  room.questions = createGameQuestions();
+  room.questions =
+    createGameQuestions();
 
-  room.countdownEndsAt = Date.now() + COUNTDOWN_TIME;
+  room.countdownEndsAt =
+    Date.now() + COUNTDOWN_TIME;
 
   broadcastRoom(room);
 
-  io.to(room.code).emit("countdown", { endsAt: room.countdownEndsAt });
+  io.to(room.code).emit(
+    "countdown",
+    {
+      endsAt:
+        room.countdownEndsAt
+    }
+  );
 
   room.timer = setTimeout(() => {
     startQuestion(room);
   }, COUNTDOWN_TIME);
 }
 
-
-// ============================================================
-// START QUESTION
-// ============================================================
+/* ============================================================
+   START QUESTION
+============================================================ */
 
 function startQuestion(room) {
   clearRoomTimers(room);
 
   room.currentQuestionIndex++;
 
-  if (room.currentQuestionIndex >= room.questions.length) {
+  if (
+    room.currentQuestionIndex >=
+    room.questions.length
+  ) {
     finishGame(room);
     return;
   }
@@ -575,24 +1271,38 @@ function startQuestion(room) {
 
   room.lastResults = null;
 
-  room.questionStartsAt = Date.now();
+  room.questionStartsAt =
+    Date.now();
 
-  room.questionEndsAt = room.questionStartsAt + QUESTION_TIME;
+  room.questionEndsAt =
+    room.questionStartsAt +
+    QUESTION_TIME;
 
   broadcastRoom(room);
 
-  for (const player of room.players.values()) {
-    if (!player.active || !player.connected) {
+  for (
+    const player of room.players.values()
+  ) {
+    if (
+      !player.active ||
+      !player.connected
+    ) {
       continue;
     }
 
-    const socket = io.sockets.sockets.get(player.socketId);
+    const socket =
+      io.sockets.sockets.get(
+        player.socketId
+      );
 
     if (!socket) {
       continue;
     }
 
-    socket.emit("question", safeQuestion(room, player));
+    socket.emit(
+      "question",
+      safeQuestion(room, player)
+    );
   }
 
   room.timer = setTimeout(() => {
@@ -600,10 +1310,9 @@ function startQuestion(room) {
   }, QUESTION_TIME);
 }
 
-
-// ============================================================
-// FINISH QUESTION
-// ============================================================
+/* ============================================================
+   FINISH QUESTION
+============================================================ */
 
 function finishQuestion(room) {
   if (room.status !== "question") {
@@ -614,30 +1323,59 @@ function finishQuestion(room) {
 
   room.status = "results";
 
-  const question = room.questions[room.currentQuestionIndex];
+  const question =
+    room.questions[
+      room.currentQuestionIndex
+    ];
 
-
-  for (const player of room.players.values()) {
+  for (
+    const player of room.players.values()
+  ) {
     if (!player.active) {
       continue;
     }
 
-    const answer = room.answers.get(player.id);
+    const answer =
+      room.answers.get(player.id);
 
     let points = 0;
 
-    const wasCorrect = Boolean(answer && answer.index === question.correctIndex);
+    const wasCorrect =
+      Boolean(
+        answer &&
+        answer.index ===
+          question.correctIndex
+      );
 
     if (wasCorrect) {
-      const remaining = Math.max(0, room.questionEndsAt - answer.at);
+      const remaining =
+        Math.max(
+          0,
+          room.questionEndsAt -
+            answer.at
+        );
 
-      const speedBonus = 50 * (remaining / QUESTION_TIME);
+      const speedBonus =
+        50 *
+        (remaining /
+          QUESTION_TIME);
 
-      const streakBonus = Math.min(STREAK_BONUS_CAP, player.streak * STREAK_BONUS_PER_STEP);
+      const streakBonus =
+        Math.min(
+          STREAK_BONUS_CAP,
+          player.streak *
+            STREAK_BONUS_PER_STEP
+        );
 
-      points = Math.round(100 + speedBonus + streakBonus);
+      points = Math.round(
+        100 +
+          speedBonus +
+          streakBonus
+      );
 
-      if (player.doublePointsActive) {
+      if (
+        player.doublePointsActive
+      ) {
         points *= 2;
       }
 
@@ -646,39 +1384,54 @@ function finishQuestion(room) {
       player.streak = 0;
     }
 
-    player.doublePointsActive = false;
+    player.doublePointsActive =
+      false;
 
     player.lastPoints = points;
 
     player.score += points;
   }
 
-
-  const leaderboard = getActivePlayers(room)
-    .map((player) => ({
-      id: player.id,
-      name: player.name,
-      points: player.lastPoints || 0,
-      total: player.score,
-      streak: player.streak
-    }))
-    .sort((a, b) => b.total - a.total);
-
+  const leaderboard =
+    getActivePlayers(room)
+      .map((player) => ({
+        id: player.id,
+        name: player.name,
+        points:
+          player.lastPoints || 0,
+        total: player.score,
+        streak: player.streak
+      }))
+      .sort(
+        (a, b) =>
+          b.total - a.total
+      );
 
   room.lastResults = {
-    questionNumber: room.currentQuestionIndex + 1,
-    correctAnswer: question.options[question.correctIndex],
+    questionNumber:
+      room.currentQuestionIndex +
+      1,
+
+    correctAnswer:
+      question.options[
+        question.correctIndex
+      ],
+
     players: leaderboard
   };
 
-
   broadcastRoom(room);
 
-  io.to(room.code).emit("question_results", room.lastResults);
-
+  io.to(room.code).emit(
+    "question_results",
+    room.lastResults
+  );
 
   room.timer = setTimeout(() => {
-    if (room.currentQuestionIndex >= room.questions.length - 1) {
+    if (
+      room.currentQuestionIndex >=
+      room.questions.length - 1
+    ) {
       finishGame(room);
     } else {
       startQuestion(room);
@@ -686,51 +1439,63 @@ function finishQuestion(room) {
   }, RESULTS_TIME);
 }
 
-
-// ============================================================
-// FINISH GAME
-// ============================================================
+/* ============================================================
+   FINISH GAME
+============================================================ */
 
 function finishGame(room) {
   clearRoomTimers(room);
 
   room.status = "finished";
 
-  // Include every player who ever joined (even if they left),
-  // so their final score and rank still show up.
-  const leaderboard = [...room.players.values()]
-    .map((player) => ({
-      id: player.id,
-      name: player.name,
-      total: player.score,
-      left: !player.active
-    }))
-    .sort((a, b) => b.total - a.total);
+  const leaderboard =
+    [...room.players.values()]
+      .map((player) => ({
+        id: player.id,
+        name: player.name,
+        total: player.score,
+        left: !player.active
+      }))
+      .sort(
+        (a, b) =>
+          b.total - a.total
+      );
 
-  const highestScore = leaderboard.length ? leaderboard[0].total : 0;
+  const highestScore =
+    leaderboard.length
+      ? leaderboard[0].total
+      : 0;
 
-  const winners = leaderboard.filter((player) => player.total === highestScore);
+  const winners =
+    leaderboard.filter(
+      (player) =>
+        player.total ===
+        highestScore
+    );
 
   room.finalResults = {
     leaderboard,
     winners,
-    winner: winners[0] || null
+    winner:
+      winners[0] || null
   };
 
   broadcastRoom(room);
 
-  io.to(room.code).emit("game_finished", room.finalResults);
+  io.to(room.code).emit(
+    "game_finished",
+    room.finalResults
+  );
 
-  // Clean the room up automatically if nobody restarts it.
-  room.cleanupTimer = setTimeout(() => {
-    rooms.delete(room.code);
-  }, ROOM_IDLE_CLEANUP);
+  room.cleanupTimer =
+    setTimeout(() => {
+      rooms.delete(room.code);
+    }, ROOM_IDLE_CLEANUP);
 }
 
-
-// ============================================================
-// RESET ROOM FOR "PLAY AGAIN"
-// ============================================================
+/* ============================================================
+   RESET FOR PLAY AGAIN
+============================================================ */
 
 function resetRoomForReplay(room) {
   clearRoomTimers(room);
@@ -755,8 +1520,9 @@ function resetRoomForReplay(room) {
 
   room.finalResults = null;
 
-  // Drop players who already left permanently; keep the rest.
-  for (const [id, player] of room.players) {
+  for (
+    const [id, player] of room.players
+  ) {
     if (!player.active) {
       room.players.delete(id);
       continue;
@@ -765,114 +1531,126 @@ function resetRoomForReplay(room) {
     player.score = 0;
     player.streak = 0;
     player.lastPoints = 0;
-    player.doublePointsActive = false;
-    player.powerups = { fiftyFifty: true, doublePoints: true };
+
+    player.doublePointsActive =
+      false;
+
+    player.powerups = {
+      fiftyFifty: true,
+      doublePoints: true
+    };
   }
 
-  if (!room.players.has(room.hostPlayerId)) {
+  if (
+    !room.players.has(
+      room.hostPlayerId
+    )
+  ) {
     transferHost(room);
   }
 
   broadcastRoom(room);
 }
 
+/* ============================================================
+   RECONNECT EXPIRY
+============================================================ */
 
-// ============================================================
-// CLEAR TIMERS
-// ============================================================
-
-function clearRoomTimers(room) {
-  if (room.timer) {
-    clearTimeout(room.timer);
-    room.timer = null;
-  }
-
-  if (room.cleanupTimer) {
-    clearTimeout(room.cleanupTimer);
-    room.cleanupTimer = null;
-  }
-
-  if (room.reconnectTimers) {
-    for (const timer of room.reconnectTimers.values()) {
-      clearTimeout(timer);
-    }
-
-    room.reconnectTimers.clear();
-  }
-}
-
-
-// ============================================================
-// RECONNECTION GRACE
-// ============================================================
-
-function scheduleReconnectExpiry(room, player) {
+function scheduleReconnectExpiry(
+  room,
+  player
+) {
   if (player.reconnectTimer) {
-    clearTimeout(player.reconnectTimer);
+    clearTimeout(
+      player.reconnectTimer
+    );
   }
 
-  player.reconnectTimer = setTimeout(() => {
-    if (player.connected || !player.active) {
-      return;
-    }
+  player.reconnectTimer =
+    setTimeout(() => {
+      if (
+        player.connected ||
+        !player.active
+      ) {
+        return;
+      }
 
-    player.active = false;
+      player.active = false;
 
-    if (room.hostPlayerId === player.id) {
-      transferHost(room);
-    }
+      if (
+        room.hostPlayerId ===
+        player.id
+      ) {
+        transferHost(room);
+      }
 
-    broadcastRoom(room);
+      broadcastRoom(room);
 
-    checkMinPlayers(room);
+      checkMinPlayers(room);
 
-    maybeDeleteEmptyRoom(room);
-  }, RECONNECT_GRACE);
+      maybeDeleteEmptyRoom(room);
+    }, RECONNECT_GRACE);
 }
 
-
-// ============================================================
-// CHECK EARLY FINISH (everyone connected has answered)
-// ============================================================
+/* ============================================================
+   EARLY FINISH
+============================================================ */
 
 function checkEarlyFinish(room) {
   if (room.status !== "question") {
     return;
   }
 
-  const connected = getConnectedPlayers(room);
+  const connected =
+    getConnectedPlayers(room);
 
   if (connected.length === 0) {
     return;
   }
 
-  const allAnswered = connected.every((player) => room.answers.has(player.id));
+  const allAnswered =
+    connected.every(
+      (player) =>
+        room.answers.has(
+          player.id
+        )
+    );
 
   if (allAnswered) {
     finishQuestion(room);
   }
 }
 
-
-// ============================================================
-// CHECK MIN PLAYERS (end the game early if too few remain)
-// ============================================================
+/* ============================================================
+   MINIMUM PLAYERS
+============================================================ */
 
 function checkMinPlayers(room) {
-  if (room.status === "question" || room.status === "countdown" || room.status === "results") {
-    if (getActivePlayers(room).length < MIN_PLAYERS) {
+  if (
+    room.status === "question" ||
+    room.status === "countdown" ||
+    room.status === "results"
+  ) {
+    if (
+      getActivePlayers(room)
+        .length < MIN_PLAYERS
+    ) {
       finishGame(room);
     }
   }
 }
 
-
-// ============================================================
-// DELETE EMPTY ROOMS
-// ============================================================
+/* ============================================================
+   DELETE EMPTY ROOM
+============================================================ */
 
 function maybeDeleteEmptyRoom(room) {
-  const stillPresent = [...room.players.values()].some((player) => player.active || player.connected);
+  const stillPresent =
+    [...room.players.values()].some(
+      (player) =>
+        player.active ||
+        player.connected
+    );
 
   if (!stillPresent) {
     clearRoomTimers(room);
@@ -880,13 +1658,16 @@ function maybeDeleteEmptyRoom(room) {
   }
 }
 
+/* ============================================================
+   REMOVE PLAYER
+============================================================ */
 
-// ============================================================
-// REMOVE PLAYER IMMEDIATELY (explicit "leave")
-// ============================================================
-
-function removePlayer(room, playerId) {
-  const player = room.players.get(playerId);
+function removePlayer(
+  room,
+  playerId
+) {
+  const player =
+    room.players.get(playerId);
 
   if (!player) {
     return;
@@ -896,11 +1677,17 @@ function removePlayer(room, playerId) {
   player.connected = false;
 
   if (player.reconnectTimer) {
-    clearTimeout(player.reconnectTimer);
+    clearTimeout(
+      player.reconnectTimer
+    );
+
     player.reconnectTimer = null;
   }
 
-  if (room.hostPlayerId === player.id) {
+  if (
+    room.hostPlayerId ===
+    player.id
+  ) {
     transferHost(room);
   }
 
@@ -913,530 +1700,1526 @@ function removePlayer(room, playerId) {
   maybeDeleteEmptyRoom(room);
 }
 
+/* ============================================================
+   CREATE ROOM
+============================================================ */
 
-// ============================================================
-// CREATE ROOM
-// ============================================================
-
-function createRoom(socket, payload, callback) {
-  const name = cleanName(payload?.name);
+function createRoom(
+  socket,
+  payload,
+  callback
+) {
+  const name =
+    cleanName(payload?.name);
 
   if (!name) {
-    callback({ error: "Name must contain 2–16 valid characters." });
+    callback({
+      error:
+        "Name must contain 2–16 valid characters."
+    });
+
     return;
   }
 
-  const roomCode = generateRoomCode();
+  const roomCode =
+    generateRoomCode();
 
-  const playerId = randomId();
+  const playerId =
+    randomId();
 
-  const token = randomId();
+  const token =
+    randomId();
 
   const room = {
     code: roomCode,
+
     status: "waiting",
+
     hostPlayerId: playerId,
+
     players: new Map(),
+
     questions: [],
+
     currentQuestionIndex: -1,
+
     answers: new Map(),
+
     eliminations: new Map(),
+
     questionStartsAt: null,
+
     questionEndsAt: null,
+
     countdownEndsAt: null,
+
     timer: null,
+
     cleanupTimer: null,
+
     lastResults: null,
+
     finalResults: null
   };
 
   const player = {
     id: playerId,
+
     token,
+
     name,
+
     score: 0,
+
     streak: 0,
+
     lastPoints: 0,
-    powerups: { fiftyFifty: true, doublePoints: true },
+
+    powerups: {
+      fiftyFifty: true,
+      doublePoints: true
+    },
+
     doublePointsActive: false,
+
     active: true,
+
     connected: true,
+
     socketId: socket.id,
+
     reconnectTimer: null
   };
 
-  room.players.set(playerId, player);
+  room.players.set(
+    playerId,
+    player
+  );
 
-  rooms.set(roomCode, room);
+  rooms.set(
+    roomCode,
+    room
+  );
 
   socket.join(roomCode);
 
-  socket.data.roomCode = roomCode;
-  socket.data.playerId = playerId;
-  socket.data.token = token;
+  socket.data.roomCode =
+    roomCode;
 
-  callback({ ok: true, roomCode, playerId, token, name });
+  socket.data.playerId =
+    playerId;
+
+  socket.data.token =
+    token;
+
+  callback({
+    ok: true,
+    roomCode,
+    playerId,
+    token,
+    name
+  });
 
   broadcastRoom(room);
 }
 
+/* ============================================================
+   JOIN ROOM
+============================================================ */
 
-// ============================================================
-// JOIN ROOM
-// ============================================================
+function joinRoom(
+  socket,
+  payload,
+  callback
+) {
+  const name =
+    cleanName(payload?.name);
 
-function joinRoom(socket, payload, callback) {
-  const name = cleanName(payload?.name);
-
-  const roomCode = normalizeRoomCode(payload?.roomCode);
+  const roomCode =
+    normalizeRoomCode(
+      payload?.roomCode
+    );
 
   if (!name) {
-    callback({ error: "Name must contain 2–16 valid characters." });
+    callback({
+      error:
+        "Name must contain 2–16 valid characters."
+    });
+
     return;
   }
 
-  if (!/^[A-Z0-9]{6}$/.test(roomCode)) {
-    callback({ error: "Room code must contain 6 characters." });
+  if (
+    !/^[A-Z0-9]{6}$/.test(
+      roomCode
+    )
+  ) {
+    callback({
+      error:
+        "Room code must contain 6 characters."
+    });
+
     return;
   }
 
-  const room = rooms.get(roomCode);
+  const room =
+    rooms.get(roomCode);
 
   if (!room) {
-    callback({ error: "Room not found." });
+    callback({
+      error: "Room not found."
+    });
+
     return;
   }
 
   if (room.status !== "waiting") {
-    callback({ error: "The game has already started. New players cannot join." });
+    callback({
+      error:
+        "The game has already started. New players cannot join."
+    });
+
     return;
   }
 
-  const activePlayers = getActivePlayers(room);
+  const activePlayers =
+    getActivePlayers(room);
 
-  if (activePlayers.length >= MAX_PLAYERS) {
-    callback({ error: "This room is full." });
+  if (
+    activePlayers.length >=
+    MAX_PLAYERS
+  ) {
+    callback({
+      error:
+        "This room is full."
+    });
+
     return;
   }
 
-  const duplicate = activePlayers.some((player) => player.name.toLowerCase() === name.toLowerCase());
+  const duplicate =
+    activePlayers.some(
+      (player) =>
+        player.name.toLowerCase() ===
+        name.toLowerCase()
+    );
 
   if (duplicate) {
-    callback({ error: "That player name is already taken." });
+    callback({
+      error:
+        "That player name is already taken."
+    });
+
     return;
   }
 
-  const playerId = randomId();
+  const playerId =
+    randomId();
 
-  const token = randomId();
+  const token =
+    randomId();
 
   const player = {
     id: playerId,
+
     token,
+
     name,
+
     score: 0,
+
     streak: 0,
+
     lastPoints: 0,
-    powerups: { fiftyFifty: true, doublePoints: true },
+
+    powerups: {
+      fiftyFifty: true,
+      doublePoints: true
+    },
+
     doublePointsActive: false,
+
     active: true,
+
     connected: true,
+
     socketId: socket.id,
+
     reconnectTimer: null
   };
 
-  room.players.set(playerId, player);
+  room.players.set(
+    playerId,
+    player
+  );
 
   socket.join(roomCode);
 
-  socket.data.roomCode = roomCode;
-  socket.data.playerId = playerId;
-  socket.data.token = token;
+  socket.data.roomCode =
+    roomCode;
 
-  callback({ ok: true, roomCode, playerId, token, name });
+  socket.data.playerId =
+    playerId;
+
+  socket.data.token =
+    token;
+
+  callback({
+    ok: true,
+    roomCode,
+    playerId,
+    token,
+    name
+  });
 
   broadcastRoom(room);
 }
 
+/* ============================================================
+   RECONNECT PLAYER
+============================================================ */
 
-// ============================================================
-// RECONNECT PLAYER
-// ============================================================
+function reconnectPlayer(
+  socket,
+  payload,
+  callback
+) {
+  const roomCode =
+    normalizeRoomCode(
+      payload?.roomCode
+    );
 
-function reconnectPlayer(socket, payload, callback) {
-  const roomCode = normalizeRoomCode(payload?.roomCode);
+  const token =
+    String(payload?.token || "");
 
-  const token = String(payload?.token || "");
-
-  const room = rooms.get(roomCode);
+  const room =
+    rooms.get(roomCode);
 
   if (!room) {
-    callback({ error: "The room no longer exists." });
+    callback({
+      error:
+        "The room no longer exists."
+    });
+
     return;
   }
 
-  const player = [...room.players.values()].find(
-    (candidate) => candidate.token === token && candidate.active
-  );
+  const player =
+    [...room.players.values()]
+      .find(
+        (candidate) =>
+          candidate.token === token &&
+          candidate.active
+      );
 
   if (!player) {
-    callback({ error: "Reconnection session expired." });
+    callback({
+      error:
+        "Reconnection session expired."
+    });
+
     return;
   }
 
   if (player.reconnectTimer) {
-    clearTimeout(player.reconnectTimer);
-    player.reconnectTimer = null;
+    clearTimeout(
+      player.reconnectTimer
+    );
+
+    player.reconnectTimer =
+      null;
   }
 
   player.connected = true;
-  player.socketId = socket.id;
+
+  player.socketId =
+    socket.id;
 
   socket.join(roomCode);
 
-  socket.data.roomCode = roomCode;
-  socket.data.playerId = player.id;
-  socket.data.token = player.token;
+  socket.data.roomCode =
+    roomCode;
 
-  callback({ ok: true, roomCode, playerId: player.id, token: player.token, name: player.name });
+  socket.data.playerId =
+    player.id;
 
-  sendCurrentState(socket, room, player);
+  socket.data.token =
+    player.token;
+
+  callback({
+    ok: true,
+    roomCode,
+    playerId: player.id,
+    token: player.token,
+    name: player.name
+  });
+
+  sendCurrentState(
+    socket,
+    room,
+    player
+  );
 
   broadcastRoom(room);
 }
 
+/* ============================================================
+   SOCKET CONNECTION
+============================================================ */
 
-// ============================================================
-// SOCKET CONNECTION
-// ============================================================
+io.on(
+  "connection",
+  (socket) => {
+    console.log(
+      `Socket connected: ${socket.id}`
+    );
 
-io.on("connection", (socket) => {
-  console.log(`Socket connected: ${socket.id}`);
+    /* TIME SYNC */
 
-
-  // --------------------------------------------------------
-  // SERVER TIME
-  // --------------------------------------------------------
-
-  socket.on("time_sync", (callback) => {
-    if (typeof callback === "function") {
-      callback(Date.now());
-    }
-  });
-
-
-  // --------------------------------------------------------
-  // CREATE ROOM
-  // --------------------------------------------------------
-
-  socket.on("create_room", (payload, callback) => {
-    createRoom(socket, payload, callback);
-  });
-
-
-  // --------------------------------------------------------
-  // JOIN ROOM
-  // --------------------------------------------------------
-
-  socket.on("join_room", (payload, callback) => {
-    joinRoom(socket, payload, callback);
-  });
-
-
-  // --------------------------------------------------------
-  // RECONNECT
-  // --------------------------------------------------------
-
-  socket.on("reconnect_player", (payload, callback) => {
-    reconnectPlayer(socket, payload, callback);
-  });
-
-
-  // --------------------------------------------------------
-  // START GAME
-  // --------------------------------------------------------
-
-  socket.on("start_game", (payload, callback) => {
-    const room = rooms.get(socket.data.roomCode);
-
-    if (!room) {
-      callback({ error: "Room not found." });
-      return;
-    }
-
-    const player = room.players.get(socket.data.playerId);
-
-    if (!player) {
-      callback({ error: "Player not found." });
-      return;
-    }
-
-    if (room.hostPlayerId !== player.id) {
-      callback({ error: "Only the host can start the game." });
-      return;
-    }
-
-    if (room.status !== "waiting") {
-      callback({ error: "The game has already started." });
-      return;
-    }
-
-    if (getActivePlayers(room).length < MIN_PLAYERS) {
-      callback({ error: "At least 2 players are required." });
-      return;
-    }
-
-    try {
-      startCountdown(room);
-
-      callback({ ok: true });
-    } catch (error) {
-      console.error(error);
-
-      callback({ error: "Unable to create the game questions." });
-    }
-  });
-
-
-  // --------------------------------------------------------
-  // USE POWER-UP
-  // --------------------------------------------------------
-
-  socket.on("use_powerup", (payload, callback) => {
-    const room = rooms.get(socket.data.roomCode);
-
-    if (!room) {
-      callback?.({ error: "Room not found." });
-      return;
-    }
-
-    const player = room.players.get(socket.data.playerId);
-
-    if (!player || !player.active || !player.connected) {
-      callback?.({ error: "You are not an active player." });
-      return;
-    }
-
-    if (room.status !== "question") {
-      callback?.({ error: "Power-ups can only be used during a question." });
-      return;
-    }
-
-    if (room.answers.has(player.id)) {
-      callback?.({ error: "You already answered this question." });
-      return;
-    }
-
-    const type = payload?.type;
-
-    const question = room.questions[room.currentQuestionIndex];
-
-    if (type === "fiftyFifty") {
-      if (!player.powerups.fiftyFifty) {
-        callback?.({ error: "You already used 50/50." });
-        return;
+    socket.on(
+      "time_sync",
+      (callback) => {
+        if (
+          typeof callback ===
+          "function"
+        ) {
+          callback(Date.now());
+        }
       }
+    );
 
-      const wrongIndexes = question.options
-        .map((_, index) => index)
-        .filter((index) => index !== question.correctIndex);
+    /* CREATE ROOM */
 
-      const eliminated = shuffle(wrongIndexes).slice(0, 2);
-
-      player.powerups.fiftyFifty = false;
-
-      room.eliminations.set(player.id, eliminated);
-
-      callback?.({ ok: true, eliminatedOptions: eliminated });
-
-      return;
-    }
-
-    if (type === "doublePoints") {
-      if (!player.powerups.doublePoints) {
-        callback?.({ error: "You already used Double Points." });
-        return;
+    socket.on(
+      "create_room",
+      (payload, callback) => {
+        createRoom(
+          socket,
+          payload,
+          callback
+        );
       }
+    );
 
-      player.powerups.doublePoints = false;
+    /* JOIN ROOM */
 
-      player.doublePointsActive = true;
+    socket.on(
+      "join_room",
+      (payload, callback) => {
+        joinRoom(
+          socket,
+          payload,
+          callback
+        );
+      }
+    );
 
-      callback?.({ ok: true, doublePointsActive: true });
+    /* RECONNECT */
 
-      return;
+    socket.on(
+      "reconnect_player",
+      (payload, callback) => {
+        reconnectPlayer(
+          socket,
+          payload,
+          callback
+        );
+      }
+    );
+
+    /* START GAME */
+
+    socket.on(
+      "start_game",
+      (payload, callback) => {
+        const room =
+          rooms.get(
+            socket.data.roomCode
+          );
+
+        if (!room) {
+          callback({
+            error:
+              "Room not found."
+          });
+
+          return;
+        }
+
+        const player =
+          room.players.get(
+            socket.data.playerId
+          );
+
+        if (!player) {
+          callback({
+            error:
+              "Player not found."
+          });
+
+          return;
+        }
+
+        if (
+          room.hostPlayerId !==
+          player.id
+        ) {
+          callback({
+            error:
+              "Only the host can start the game."
+          });
+
+          return;
+        }
+
+        if (
+          room.status !==
+          "waiting"
+        ) {
+          callback({
+            error:
+              "The game has already started."
+          });
+
+          return;
+        }
+
+        if (
+          getActivePlayers(room)
+            .length < MIN_PLAYERS
+        ) {
+          callback({
+            error:
+              "At least 2 players are required."
+          });
+
+          return;
+        }
+
+        try {
+          startCountdown(room);
+
+          callback({
+            ok: true
+          });
+        } catch (error) {
+          console.error(error);
+
+          callback({
+            error:
+              "Unable to create the game questions."
+          });
+        }
+      }
+    );
+
+    /* USE POWER-UP */
+
+    socket.on(
+      "use_powerup",
+      (payload, callback) => {
+        const room =
+          rooms.get(
+            socket.data.roomCode
+          );
+
+        if (!room) {
+          callback?.({
+            error:
+              "Room not found."
+          });
+
+          return;
+        }
+
+        const player =
+          room.players.get(
+            socket.data.playerId
+          );
+
+        if (
+          !player ||
+          !player.active ||
+          !player.connected
+        ) {
+          callback?.({
+            error:
+              "You are not an active player."
+          });
+
+          return;
+        }
+
+        if (
+          room.status !==
+          "question"
+        ) {
+          callback?.({
+            error:
+              "Power-ups can only be used during a question."
+          });
+
+          return;
+        }
+
+        if (
+          room.answers.has(
+            player.id
+          )
+        ) {
+          callback?.({
+            error:
+              "You already answered this question."
+          });
+
+          return;
+        }
+
+        const type =
+          payload?.type;
+
+        const question =
+          room.questions[
+            room.currentQuestionIndex
+          ];
+
+        if (
+          type ===
+          "fiftyFifty"
+        ) {
+          if (
+            !player.powerups
+              .fiftyFifty
+          ) {
+            callback?.({
+              error:
+                "You already used 50/50."
+            });
+
+            return;
+          }
+
+          const wrongIndexes =
+            question.options
+              .map(
+                (_, index) =>
+                  index
+              )
+              .filter(
+                (index) =>
+                  index !==
+                  question.correctIndex
+              );
+
+          const eliminated =
+            shuffle(
+              wrongIndexes
+            ).slice(0, 2);
+
+          player.powerups
+            .fiftyFifty = false;
+
+          room.eliminations.set(
+            player.id,
+            eliminated
+          );
+
+          callback?.({
+            ok: true,
+            eliminatedOptions:
+              eliminated
+          });
+
+          return;
+        }
+
+        if (
+          type ===
+          "doublePoints"
+        ) {
+          if (
+            !player.powerups
+              .doublePoints
+          ) {
+            callback?.({
+              error:
+                "You already used Double Points."
+            });
+
+            return;
+          }
+
+          player.powerups
+            .doublePoints = false;
+
+          player.doublePointsActive =
+            true;
+
+          callback?.({
+            ok: true,
+            doublePointsActive:
+              true
+          });
+
+          return;
+        }
+
+        callback?.({
+          error:
+            "Unknown power-up."
+        });
+      }
+    );
+
+    /* SUBMIT ANSWER */
+
+    socket.on(
+      "submit_answer",
+      (payload, callback) => {
+        const room =
+          rooms.get(
+            socket.data.roomCode
+          );
+
+        if (!room) {
+          callback({
+            error:
+              "Room not found."
+          });
+
+          return;
+        }
+
+        const player =
+          room.players.get(
+            socket.data.playerId
+          );
+
+        if (
+          !player ||
+          !player.active ||
+          !player.connected
+        ) {
+          callback({
+            error:
+              "You are not an active player."
+          });
+
+          return;
+        }
+
+        if (
+          room.status !==
+          "question"
+        ) {
+          callback({
+            error:
+              "The question is no longer active."
+          });
+
+          return;
+        }
+
+        const question =
+          room.questions[
+            room.currentQuestionIndex
+          ];
+
+        if (
+          !question ||
+          payload?.questionId !==
+            question.id
+        ) {
+          callback({
+            error:
+              "This question is no longer current."
+          });
+
+          return;
+        }
+
+        if (
+          room.answers.has(
+            player.id
+          )
+        ) {
+          callback({
+            error:
+              "You have already answered this question."
+          });
+
+          return;
+        }
+
+        const index =
+          Number(
+            payload?.index
+          );
+
+        if (
+          !Number.isInteger(
+            index
+          ) ||
+          index < 0 ||
+          index >=
+            question.options
+              .length
+        ) {
+          callback({
+            error:
+              "Invalid answer."
+          });
+
+          return;
+        }
+
+        const now =
+          Date.now();
+
+        if (
+          now >
+          room.questionEndsAt
+        ) {
+          callback({
+            error:
+              "Time is up."
+          });
+
+          return;
+        }
+
+        room.answers.set(
+          player.id,
+          {
+            index,
+            at: now
+          }
+        );
+
+        callback({
+          ok: true
+        });
+
+        const connectedPlayers =
+          getConnectedPlayers(
+            room
+          );
+
+        io.to(room.code).emit(
+          "answer_count",
+          {
+            count:
+              room.answers.size,
+
+            total:
+              connectedPlayers.length
+          }
+        );
+
+        checkEarlyFinish(room);
+      }
+    );
+
+    /* PLAY AGAIN */
+
+    socket.on(
+      "play_again",
+      (payload, callback) => {
+        const room =
+          rooms.get(
+            socket.data.roomCode
+          );
+
+        if (!room) {
+          callback?.({
+            error:
+              "Room not found."
+          });
+
+          return;
+        }
+
+        const player =
+          room.players.get(
+            socket.data.playerId
+          );
+
+        if (!player) {
+          callback?.({
+            error:
+              "Player not found."
+          });
+
+          return;
+        }
+
+        if (
+          room.hostPlayerId !==
+          player.id
+        ) {
+          callback?.({
+            error:
+              "Only the host can restart the game."
+          });
+
+          return;
+        }
+
+        if (
+          room.status !==
+          "finished"
+        ) {
+          callback?.({
+            error:
+              "The game hasn't finished yet."
+          });
+
+          return;
+        }
+
+        resetRoomForReplay(room);
+
+        callback?.({
+          ok: true
+        });
+      }
+    );
+
+    /* LEAVE GAME */
+
+    socket.on(
+      "leave_game",
+      (payload, callback) => {
+        const room =
+          rooms.get(
+            socket.data.roomCode
+          );
+
+        if (!room) {
+          callback?.({
+            ok: true
+          });
+
+          return;
+        }
+
+        removePlayer(
+          room,
+          socket.data.playerId
+        );
+
+        socket.leave(room.code);
+
+        callback?.({
+          ok: true
+        });
+      }
+    );
+
+    /* DISCONNECT */
+
+    socket.on(
+      "disconnect",
+      () => {
+        console.log(
+          `Socket disconnected: ${socket.id}`
+        );
+
+        const room =
+          rooms.get(
+            socket.data.roomCode
+          );
+
+        if (!room) {
+          return;
+        }
+
+        const player =
+          room.players.get(
+            socket.data.playerId
+          );
+
+        if (
+          !player ||
+          !player.active
+        ) {
+          return;
+        }
+
+        player.connected = false;
+
+        player.socketId = null;
+
+        if (
+          room.hostPlayerId ===
+          player.id
+        ) {
+          transferHost(room);
+        }
+
+        broadcastRoom(room);
+
+        scheduleReconnectExpiry(
+          room,
+          player
+        );
+
+        checkEarlyFinish(room);
+      }
+    );
+  }
+);
+
+/* ============================================================
+   DASHBOARD
+============================================================ */
+
+app.get("/", (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Tech Battle Server</title>
+
+<style>
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-family: "Courier New", monospace;
+
+  background:
+    radial-gradient(
+      circle at 20% 20%,
+      #18204a 0%,
+      transparent 30%
+    ),
+    radial-gradient(
+      circle at 80% 80%,
+      #062d31 0%,
+      transparent 30%
+    ),
+    #080817;
+
+  color: #00ff88;
+
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+
+  position: fixed;
+  inset: 0;
+
+  background-image:
+    radial-gradient(
+      #ffffff 1px,
+      transparent 1px
+    );
+
+  background-size: 120px 120px;
+
+  opacity: 0.18;
+
+  pointer-events: none;
+}
+
+.server-card {
+  width: min(900px, 92%);
+
+  padding: 45px;
+
+  border: 2px solid #00ff88;
+
+  border-radius: 14px;
+
+  background:
+    rgba(8, 8, 25, 0.92);
+
+  box-shadow:
+    0 0 20px
+      rgba(0, 255, 136, 0.35),
+
+    inset 0 0 35px
+      rgba(0, 255, 136, 0.04);
+}
+
+.logo {
+  text-align: center;
+
+  font-size: 65px;
+
+  margin-bottom: 10px;
+}
+
+h1 {
+  margin: 0;
+
+  text-align: center;
+
+  font-size:
+    clamp(
+      40px,
+      8vw,
+      78px
+    );
+
+  letter-spacing: 8px;
+
+  color: #ffffff;
+
+  text-shadow:
+    0 0 10px #00ff88,
+    0 0 25px #00ff88,
+    0 0 50px #00ff88;
+}
+
+.subtitle {
+  text-align: center;
+
+  margin:
+    15px 0 35px;
+
+  color: #00ffff;
+
+  font-size: 18px;
+}
+
+.status {
+  text-align: center;
+
+  padding: 14px;
+
+  margin-bottom: 28px;
+
+  border:
+    1px solid #00ff88;
+
+  background:
+    rgba(
+      0,
+      255,
+      136,
+      0.08
+    );
+
+  font-size: 20px;
+
+  text-shadow:
+    0 0 8px #00ff88;
+}
+
+.status span {
+  color: #ffffff;
+}
+
+.grid {
+  display: grid;
+
+  grid-template-columns:
+    repeat(3, 1fr);
+
+  gap: 18px;
+}
+
+.box {
+  padding:
+    25px 15px;
+
+  min-height: 115px;
+
+  border:
+    1px solid #00ff88;
+
+  background:
+    rgba(
+      0,
+      255,
+      136,
+      0.06
+    );
+
+  text-align: center;
+
+  transition: 0.2s;
+}
+
+.box:hover {
+  transform:
+    translateY(-3px);
+
+  box-shadow:
+    0 0 18px
+      rgba(
+        0,
+        255,
+        136,
+        0.3
+      );
+}
+
+.icon {
+  font-size: 25px;
+
+  margin-bottom: 10px;
+}
+
+.label {
+  color: #7fffd4;
+
+  font-size: 12px;
+
+  letter-spacing: 2px;
+}
+
+.value {
+  margin-top: 8px;
+
+  color: #ffffff;
+
+  font-size: 20px;
+}
+
+.online {
+  color: #00ff88;
+
+  text-shadow:
+    0 0 8px #00ff88;
+}
+
+.links {
+  display: flex;
+
+  gap: 15px;
+
+  margin-top: 28px;
+}
+
+.links a {
+  flex: 1;
+
+  padding: 15px;
+
+  text-align: center;
+
+  text-decoration: none;
+
+  color: #00ff88;
+
+  border:
+    1px solid #00ff88;
+
+  background:
+    rgba(
+      0,
+      255,
+      136,
+      0.05
+    );
+
+  transition: 0.2s;
+}
+
+.links a:hover {
+  color: #080817;
+
+  background: #00ff88;
+
+  box-shadow:
+    0 0 20px #00ff88;
+}
+
+.footer {
+  text-align: center;
+
+  margin-top: 30px;
+
+  color: #687878;
+
+  font-size: 12px;
+}
+
+@media (
+  max-width: 700px
+) {
+
+  .server-card {
+    padding: 25px;
+  }
+
+  .grid {
+    grid-template-columns:
+      1fr;
+  }
+
+  h1 {
+    letter-spacing: 4px;
+  }
+
+  .links {
+    flex-direction:
+      column;
+  }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="server-card">
+
+  <div class="logo">
+    ⚡
+  </div>
+
+  <h1>
+    TECH BATTLE
+  </h1>
+
+  <div class="subtitle">
+    ⚔ REAL-TIME MULTIPLAYER SERVER ⚔
+  </div>
+
+  <div class="status">
+
+    &gt; SYSTEM STATUS:
+
+    <span class="online">
+      ● ONLINE
+    </span>
+
+  </div>
+
+  <div class="grid">
+
+    <div class="box">
+
+      <div class="icon">
+        🟢
+      </div>
+
+      <div class="label">
+        SERVER STATUS
+      </div>
+
+      <div class="value online">
+        ACTIVE
+      </div>
+
+    </div>
+
+    <div class="box">
+
+      <div class="icon">
+        ⚔️
+      </div>
+
+      <div class="label">
+        MULTIPLAYER
+      </div>
+
+      <div class="value">
+        ENABLED
+      </div>
+
+    </div>
+
+    <div class="box">
+
+      <div class="icon">
+        🌐
+      </div>
+
+      <div class="label">
+        ENVIRONMENT
+      </div>
+
+      <div class="value">
+        PRODUCTION
+      </div>
+
+    </div>
+
+    <div class="box">
+
+      <div class="icon">
+        🔌
+      </div>
+
+      <div class="label">
+        PORT
+      </div>
+
+      <div class="value">
+        ${PORT}
+      </div>
+
+    </div>
+
+    <div class="box">
+
+      <div class="icon">
+        ❤️
+      </div>
+
+      <div class="label">
+        HEALTH
+      </div>
+
+      <div class="value online">
+        100%
+      </div>
+
+    </div>
+
+    <div class="box">
+
+      <div class="icon">
+        🎮
+      </div>
+
+      <div class="label">
+        GAME ENGINE
+      </div>
+
+      <div class="value">
+        READY
+      </div>
+
+    </div>
+
+  </div>
+
+  <div class="links">
+
+    <a href="/health">
+      ❤️ HEALTH CHECK
+    </a>
+
+    <a href="/api">
+      ⚡ SERVER API
+    </a>
+
+  </div>
+
+  <div class="footer">
+    TECH BATTLE SERVER • SOCKET.IO • REAL-TIME GAMING
+  </div>
+
+</div>
+
+</body>
+</html>
+  `);
+});
+
+/* ============================================================
+   API INFO
+============================================================ */
+
+app.get("/api", (req, res) => {
+  res.json({
+    service: "Tech Battle Server",
+
+    status: "online",
+
+    multiplayer: true,
+
+    socketIO: true,
+
+    environment:
+      process.env.NODE_ENV ||
+      "production",
+
+    endpoints: {
+      health: "/health",
+      socket: "Socket.IO"
     }
-
-    callback?.({ error: "Unknown power-up." });
-  });
-
-
-  // --------------------------------------------------------
-  // SUBMIT ANSWER
-  // --------------------------------------------------------
-
-  socket.on("submit_answer", (payload, callback) => {
-    const room = rooms.get(socket.data.roomCode);
-
-    if (!room) {
-      callback({ error: "Room not found." });
-      return;
-    }
-
-    const player = room.players.get(socket.data.playerId);
-
-    if (!player || !player.active || !player.connected) {
-      callback({ error: "You are not an active player." });
-      return;
-    }
-
-    if (room.status !== "question") {
-      callback({ error: "The question is no longer active." });
-      return;
-    }
-
-    const question = room.questions[room.currentQuestionIndex];
-
-    if (!question || payload?.questionId !== question.id) {
-      callback({ error: "This question is no longer current." });
-      return;
-    }
-
-    if (room.answers.has(player.id)) {
-      callback({ error: "You have already answered this question." });
-      return;
-    }
-
-    const index = Number(payload?.index);
-
-    if (!Number.isInteger(index) || index < 0 || index >= question.options.length) {
-      callback({ error: "Invalid answer." });
-      return;
-    }
-
-    const now = Date.now();
-
-    if (now > room.questionEndsAt) {
-      callback({ error: "Time is up." });
-      return;
-    }
-
-    room.answers.set(player.id, { index, at: now });
-
-    callback({ ok: true });
-
-    const connectedPlayers = getConnectedPlayers(room);
-
-    io.to(room.code).emit("answer_count", {
-      count: room.answers.size,
-      total: connectedPlayers.length
-    });
-
-    checkEarlyFinish(room);
-  });
-
-
-  // --------------------------------------------------------
-  // PLAY AGAIN
-  // --------------------------------------------------------
-
-  socket.on("play_again", (payload, callback) => {
-    const room = rooms.get(socket.data.roomCode);
-
-    if (!room) {
-      callback?.({ error: "Room not found." });
-      return;
-    }
-
-    const player = room.players.get(socket.data.playerId);
-
-    if (!player) {
-      callback?.({ error: "Player not found." });
-      return;
-    }
-
-    if (room.hostPlayerId !== player.id) {
-      callback?.({ error: "Only the host can restart the game." });
-      return;
-    }
-
-    if (room.status !== "finished") {
-      callback?.({ error: "The game hasn't finished yet." });
-      return;
-    }
-
-    resetRoomForReplay(room);
-
-    callback?.({ ok: true });
-  });
-
-
-  // --------------------------------------------------------
-  // LEAVE GAME
-  // --------------------------------------------------------
-
-  socket.on("leave_game", (payload, callback) => {
-    const room = rooms.get(socket.data.roomCode);
-
-    if (!room) {
-      callback?.({ ok: true });
-      return;
-    }
-
-    removePlayer(room, socket.data.playerId);
-
-    socket.leave(room.code);
-
-    callback?.({ ok: true });
-  });
-
-
-  // --------------------------------------------------------
-  // DISCONNECT
-  // --------------------------------------------------------
-
-  socket.on("disconnect", () => {
-    console.log(`Socket disconnected: ${socket.id}`);
-
-    const room = rooms.get(socket.data.roomCode);
-
-    if (!room) {
-      return;
-    }
-
-    const player = room.players.get(socket.data.playerId);
-
-    if (!player || !player.active) {
-      return;
-    }
-
-    player.connected = false;
-    player.socketId = null;
-
-    if (room.hostPlayerId === player.id) {
-      transferHost(room);
-    }
-
-    broadcastRoom(room);
-
-    scheduleReconnectExpiry(room, player);
-
-    // If everyone still connected has already answered, finish now.
-    checkEarlyFinish(room);
   });
 });
 
+/* ============================================================
+   HEALTH CHECK
+============================================================ */
 
-// ============================================================
-// START SERVER
-// ============================================================
+app.get("/health", (req, res) => {
+  res.json({
+    ok: true,
 
-httpServer.listen(PORT, "0.0.0.0", () => {
-  console.log("======================================");
-  console.log("      TECH BATTLE SERVER");
-  console.log("======================================");
-  console.log(`Server: http://localhost:${PORT}`);
-  console.log(`Health: http://localhost:${PORT}/health`);
-  console.log("Socket.IO multiplayer: ENABLED");
-  console.log("======================================");
+    service:
+      "Tech Battle server",
+
+    timestamp:
+      Date.now()
+  });
 });
+
+/* ============================================================
+   START SERVER
+============================================================ */
+
+const httpServer =
+  createServer(app);
+
+const io =
+  new Server(
+    httpServer,
+    {
+      cors: {
+        origin: "*",
+
+        methods: [
+          "GET",
+          "POST"
+        ]
+      }
+    }
+  );
+
+httpServer.listen(
+  PORT,
+  "0.0.0.0",
+  () => {
+    console.log(
+      "======================================"
+    );
+
+    console.log(
+      "       TECH BATTLE SERVER"
+    );
+
+    console.log(
+      "======================================"
+    );
+
+    console.log(
+      `Server: http://localhost:${PORT}`
+    );
+
+    console.log(
+      `Health: http://localhost:${PORT}/health`
+    );
+
+    console.log(
+      "Socket.IO multiplayer: ENABLED"
+    );
+
+    console.log(
+      "======================================"
+    );
+  }
+);
