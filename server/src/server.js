@@ -11,6 +11,25 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
+const httpServer =
+  createServer(app);
+
+const io =
+  new Server(
+    httpServer,
+    {
+      cors: {
+        origin: "*",
+
+        methods: [
+          "GET",
+          "POST"
+        ]
+      }
+    }
+  );
+
+
 const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
 
@@ -2973,6 +2992,7 @@ h1 {
     flex-direction:
       column;
   }
+
 }
 
 </style>
@@ -3171,24 +3191,6 @@ app.get("/health", (req, res) => {
 /* ============================================================
    START SERVER
 ============================================================ */
-
-const httpServer =
-  createServer(app);
-
-const io =
-  new Server(
-    httpServer,
-    {
-      cors: {
-        origin: "*",
-
-        methods: [
-          "GET",
-          "POST"
-        ]
-      }
-    }
-  );
 
 httpServer.listen(
   PORT,
