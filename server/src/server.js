@@ -100,6 +100,138 @@ function normalizeQuizType(value) {
 }
 
 /* ============================================================
+   MATCH SIZES / BATTLE FORMATS / TEAMS
+============================================================ */
+
+const MATCH_SIZES = [2, 4, 6, 8];
+
+const BATTLE_FORMATS = {
+  2: {
+    "1v1": { label: "1v1", teams: 2, teamSize: 1 },
+    ffa: { label: "Free For All", teams: 2, teamSize: 1, ffa: true }
+  },
+  4: {
+    "2v2": { label: "2v2", teams: 2, teamSize: 2 },
+    "1v1v1v1": { label: "1v1v1v1", teams: 4, teamSize: 1 },
+    ffa: { label: "Free For All", teams: 4, teamSize: 1, ffa: true }
+  },
+  6: {
+    "3v3": { label: "3v3", teams: 2, teamSize: 3 },
+    "2v2v2": { label: "2v2v2", teams: 3, teamSize: 2 },
+    ffa: { label: "Free For All", teams: 6, teamSize: 1, ffa: true }
+  },
+  8: {
+    "4v4": { label: "4v4", teams: 2, teamSize: 4 },
+    "2v2v2v2": { label: "2v2v2v2", teams: 4, teamSize: 2 },
+    ffa: { label: "Free For All", teams: 8, teamSize: 1, ffa: true }
+  }
+};
+
+function normalizeMatchSize(value) {
+  const size = Number(value);
+  return MATCH_SIZES.includes(size) ? size : 2;
+}
+
+function getBattleFormats(matchSize) {
+  return BATTLE_FORMATS[normalizeMatchSize(matchSize)] || BATTLE_FORMATS[2];
+}
+
+function normalizeBattleFormat(matchSize, value) {
+  const formats = getBattleFormats(matchSize);
+  const requested = String(value || "").trim().toLowerCase();
+  return formats[requested] ? requested : Object.keys(formats)[0];
+}
+
+function getBattleConfig(room) {
+  return getBattleFormats(room.matchSize)[room.battleFormat];
+}
+
+function assignTeams(room) {
+  const players = shuffle(getActivePlayers(room));
+  const config = getBattleConfig(room);
+  const teamNames = Array.from({ length: config.teams }, (_, i) =>
+    `Team ${String.fromCharCode(65 + i)}`
+  );
+
+  players.forEach((player, index) => {
+    const teamIndex = config.ffa ? index : index % config.teams;
+    player.teamId = `team-${teamIndex + 1}`;
+    player.teamName = teamNames[teamIndex];
+  });
+}
+
+function clearTeams(room) {
+  for (const player of room.players.values()) {
+    player.teamId = null;
+    player.teamName = null;
+  }
+}
+
+function getTeamStandings(room) {
+  const groups = new Map();
+
+  for (const player of getActivePlayers(room)) {
+    const id = player.teamId || `player-${player.id}`;
+    if (!groups.has(id)) {
+      groups.set(id, {
+        id,
+        name: player.teamName || player.name,
+        score: 0,
+        players: []
+      });
+    }
+    const team = groups.get(id);
+    team.score += player.score;
+    team.players.push({
+      id: player.id,
+      name: player.name,
+      score: player.score,
+      lastPoints: player.lastPoints || 0,
+      connected: player.connected
+    });
+  }
+
+  return [...groups.values()]
+    .sort((a, b) => b.score - a.score)
+    .map((team, index) => ({
+      ...team,
+      rank: index + 1,
+      players: team.players.sort((a, b) => b.score - a.score)
+    }));
+}
+
+function getPlayerLeaderboard(room) {
+  return getActivePlayers(room)
+    .map((player) => ({
+      id: player.id,
+      name: player.name,
+      score: player.score,
+      total: player.score,
+      points: player.lastPoints || 0,
+      lastPoints: player.lastPoints || 0,
+      streak: player.streak,
+      teamId: player.teamId,
+      teamName: player.teamName,
+      connected: player.connected
+    }))
+    .sort((a, b) => b.score - a.score)
+    .map((player, index) => ({ ...player, rank: index + 1 }));
+}
+
+function getLeaderboardPayload(room) {
+  return {
+    players: getPlayerLeaderboard(room),
+    teams: getTeamStandings(room),
+    questionNumber: room.currentQuestionIndex + 1,
+    totalQuestions: room.questions.length
+  };
+}
+
+function emitLeaderboard(room) {
+  io.to(room.code).emit("leaderboard_update", getLeaderboardPayload(room));
+}
+
+/* ============================================================
    QUESTION HELPER
 ============================================================ */
 
@@ -1754,6 +1886,10 @@ function createPlayer(
 
     name,
 
+    teamId: null,
+
+    teamName: null,
+
     score: 0,
 
     streak: 0,
@@ -1825,7 +1961,13 @@ function publicRoomState(room) {
 
         isHost:
           player.id ===
-          room.hostPlayerId
+          room.hostPlayerId,
+
+        teamId:
+          player.teamId,
+
+        teamName:
+          player.teamName
       }));
 
   return {
@@ -1842,10 +1984,30 @@ function publicRoomState(room) {
       ]?.label ||
       "Mixed Placement",
 
+    matchSize: room.matchSize,
+
+    battleFormat: room.battleFormat,
+
+    battleFormatLabel: getBattleConfig(room)?.label || room.battleFormat,
+
+    battleFormats: Object.entries(getBattleFormats(room.matchSize)).map(([id, config]) => ({
+      id,
+      label: config.label,
+      teams: config.teams,
+      teamSize: config.teamSize,
+      ffa: Boolean(config.ffa)
+    })),
+
+    requiredPlayers: room.matchSize,
+
     hostPlayerId:
       room.hostPlayerId,
 
     players,
+
+    teams: getTeamStandings(room),
+
+    leaderboard: getPlayerLeaderboard(room),
 
     currentQuestion:
       room.currentQuestionIndex,
@@ -1982,6 +2144,14 @@ function sendCurrentState(
       "countdown" &&
     room.countdownEndsAt
   ) {
+    socket.emit("battle_intro", {
+      matchSize: room.matchSize,
+      battleFormat: room.battleFormat,
+      battleFormatLabel: getBattleConfig(room)?.label || room.battleFormat,
+      teams: getTeamStandings(room),
+      players: getPlayerLeaderboard(room)
+    });
+
     socket.emit(
       "countdown",
       {
@@ -2005,6 +2175,8 @@ function sendCurrentState(
       )
     );
 
+    socket.emit("leaderboard_update", getLeaderboardPayload(room));
+
     return;
   }
 
@@ -2018,6 +2190,8 @@ function sendCurrentState(
       room.lastResults
     );
 
+    socket.emit("leaderboard_update", getLeaderboardPayload(room));
+
     return;
   }
 
@@ -2030,6 +2204,13 @@ function sendCurrentState(
       "game_finished",
       room.finalResults
     );
+
+    socket.emit("leaderboard_update", {
+      players: room.finalResults.leaderboard,
+      teams: room.finalResults.teams,
+      questionNumber: room.questions.length,
+      totalQuestions: room.questions.length
+    });
   }
 }
 
@@ -2062,6 +2243,8 @@ function clearRoomTimers(room) {
 function startCountdown(room) {
   clearRoomTimers(room);
 
+  assignTeams(room);
+
   room.status =
     "countdown";
 
@@ -2076,6 +2259,16 @@ function startCountdown(room) {
     COUNTDOWN_TIME;
 
   broadcastRoom(room);
+
+  io.to(room.code).emit("battle_intro", {
+    matchSize: room.matchSize,
+    battleFormat: room.battleFormat,
+    battleFormatLabel: getBattleConfig(room)?.label || room.battleFormat,
+    teams: getTeamStandings(room),
+    players: getPlayerLeaderboard(room)
+  });
+
+  emitLeaderboard(room);
 
   io.to(room.code).emit(
     "countdown",
@@ -2251,28 +2444,9 @@ function finishQuestion(room) {
   }
 
   const leaderboard =
-    getActivePlayers(room)
-      .map((player) => ({
-        id: player.id,
+    getPlayerLeaderboard(room);
 
-        name:
-          player.name,
-
-        points:
-          player.lastPoints ||
-          0,
-
-        total:
-          player.score,
-
-        streak:
-          player.streak
-      }))
-      .sort(
-        (a, b) =>
-          b.total -
-          a.total
-      );
+  const teams = getTeamStandings(room);
 
   room.lastResults = {
     questionNumber:
@@ -2285,10 +2459,18 @@ function finishQuestion(room) {
       ],
 
     players:
-      leaderboard
+      leaderboard,
+
+    teams,
+
+    leaderboard: {
+      players: leaderboard,
+      teams
+    }
   };
 
   broadcastRoom(room);
+  emitLeaderboard(room);
 
   io.to(room.code).emit(
     "question_results",
@@ -2314,26 +2496,13 @@ function finishGame(room) {
   room.status =
     "finished";
 
-  const leaderboard =
-    [...room.players.values()]
-      .map((player) => ({
-        id:
-          player.id,
+  const leaderboard = getPlayerLeaderboard(room).map((player) => ({
+    ...player,
+    total: player.score,
+    left: !room.players.get(player.id)?.active
+  }));
 
-        name:
-          player.name,
-
-        total:
-          player.score,
-
-        left:
-          !player.active
-      }))
-      .sort(
-        (a, b) =>
-          b.total -
-          a.total
-      );
+  const teams = getTeamStandings(room);
 
   const highestScore =
     leaderboard.length
@@ -2347,6 +2516,9 @@ function finishGame(room) {
         highestScore
     );
 
+  const highestTeamScore = teams.length ? teams[0].score : 0;
+  const winningTeams = teams.filter((team) => team.score === highestTeamScore);
+
   room.finalResults = {
     leaderboard,
 
@@ -2354,7 +2526,17 @@ function finishGame(room) {
 
     winner:
       winners[0] ||
-      null
+      null,
+
+    teams,
+
+    winningTeams,
+
+    winningTeam: winningTeams[0] || null,
+
+    battleFormat: room.battleFormat,
+    battleFormatLabel: getBattleConfig(room)?.label || room.battleFormat,
+    matchSize: room.matchSize
   };
 
   broadcastRoom(room);
@@ -2363,6 +2545,8 @@ function finishGame(room) {
     "game_finished",
     room.finalResults
   );
+
+  emitLeaderboard(room);
 
   room.cleanupTimer =
     setTimeout(() => {
@@ -2403,6 +2587,8 @@ function resetRoomForReplay(room) {
 
   room.finalResults =
     null;
+
+  clearTeams(room);
 
   for (
     const [id, player] of
@@ -2635,6 +2821,17 @@ function createRoom(
       payload?.quizType
     );
 
+  const matchSize =
+    normalizeMatchSize(
+      payload?.matchSize
+    );
+
+  const battleFormat =
+    normalizeBattleFormat(
+      matchSize,
+      payload?.battleFormat
+    );
+
   const room = {
     code:
       roomCode,
@@ -2643,6 +2840,10 @@ function createRoom(
       "waiting",
 
     quizType,
+
+    matchSize,
+
+    battleFormat,
 
     hostPlayerId:
       player.id,
@@ -2718,7 +2919,13 @@ function createRoom(
     quizTypeLabel:
       QUIZ_TYPES[
         quizType
-      ].label
+      ].label,
+
+    matchSize,
+
+    battleFormat,
+
+    battleFormatLabel: getBattleConfig(room)?.label || battleFormat
   });
 
   broadcastRoom(room);
@@ -2848,7 +3055,13 @@ function joinRoom(
     token:
       player.token,
 
-    name
+    name,
+
+    quizType: room.quizType,
+    quizTypeLabel: QUIZ_TYPES[room.quizType]?.label || "Mixed Placement",
+    matchSize: room.matchSize,
+    battleFormat: room.battleFormat,
+    battleFormatLabel: getBattleConfig(room)?.label || room.battleFormat
   });
 
   broadcastRoom(room);
@@ -3079,15 +3292,11 @@ io.on(
           });
         }
 
-        if (
-          getActivePlayers(
-            room
-          ).length <
-          MIN_PLAYERS
-        ) {
+        const activePlayers = getActivePlayers(room);
+
+        if (activePlayers.length !== room.matchSize) {
           return callback({
-            error:
-              "At least 2 players are required."
+            error: `This ${room.matchSize}-player match requires exactly ${room.matchSize} active players before it can start.`
           });
         }
 
@@ -3781,6 +3990,15 @@ app.get(
       questionTime:
         QUESTION_TIME,
 
+      matchSizes: MATCH_SIZES,
+
+      battleFormats: Object.fromEntries(
+        MATCH_SIZES.map((size) => [
+          size,
+          Object.entries(BATTLE_FORMATS[size]).map(([id, config]) => ({ id, ...config }))
+        ])
+      ),
+
       quizTypes:
         Object.entries(
           QUIZ_TYPES
@@ -3860,7 +4078,9 @@ app.get(
         "question",
         "answer_count",
         "question_results",
-        "game_finished"
+        "game_finished",
+        "leaderboard_update",
+        "battle_intro",
       ]
     });
   }
