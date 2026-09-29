@@ -76,6 +76,8 @@ function App() {
 
   const [quizType, setQuizType] = useState("mixed");
 
+  const [quizTypeOpen, setQuizTypeOpen] = useState(false);
+
   const [name, setName] = useState("");
 
   const [roomCode, setRoomCode] = useState("");
@@ -346,6 +348,37 @@ function App() {
       setScreen("join");
     }
   }, []);
+
+
+  // --------------------------------------------------
+  // QUIZ TYPE DROPDOWN
+  // --------------------------------------------------
+
+  useEffect(() => {
+    if (!quizTypeOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event) => {
+      if (!event.target.closest(".quiz-type-select")) {
+        setQuizTypeOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event) => {
+      if (event.key === "Escape") {
+        setQuizTypeOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [quizTypeOpen]);
 
 
   // --------------------------------------------------
@@ -837,16 +870,47 @@ function App() {
           {mode === "create" && (
             <label>
               Quiz Type
-              <select
-                value={quizType}
-                onChange={(event) => setQuizType(event.target.value)}
-              >
-                <option value="aptitude">🧮 Aptitude</option>
-                <option value="reasoning">🧠 Logical Reasoning</option>
-                <option value="verbal">📖 Verbal Ability</option>
-                <option value="technical">💻 Technical</option>
-                <option value="mixed">🎯 Mixed Placement</option>
-              </select>
+              <div className="quiz-type-select">
+                <button
+                  type="button"
+                  className={`quiz-type-trigger ${
+                    quizTypeOpen ? "open" : ""
+                  }`}
+                  aria-haspopup="listbox"
+                  aria-expanded={quizTypeOpen}
+                  onClick={() => setQuizTypeOpen((open) => !open)}
+                >
+                  <span>{QUIZ_TYPE_LABELS[quizType]}</span>
+                  <span className="quiz-type-arrow">
+                    {quizTypeOpen ? "⌃" : "⌄"}
+                  </span>
+                </button>
+
+                {quizTypeOpen && (
+                  <div className="quiz-type-menu" role="listbox">
+                    {Object.entries(QUIZ_TYPE_LABELS).map(([value, label]) => (
+                      <button
+                        type="button"
+                        role="option"
+                        aria-selected={quizType === value}
+                        key={value}
+                        className={`quiz-type-option ${
+                          quizType === value ? "selected" : ""
+                        }`}
+                        onClick={() => {
+                          setQuizType(value);
+                          setQuizTypeOpen(false);
+                        }}
+                      >
+                        <span>{label}</span>
+                        {quizType === value && (
+                          <span className="quiz-type-check">✓</span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </label>
           )}
 
