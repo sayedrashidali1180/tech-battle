@@ -11,24 +11,23 @@ app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
 
-const httpServer =
-  createServer(app);
+/* ============================================================
+   HTTP + SOCKET.IO
+   IMPORTANT: io MUST be initialized before io.on()
+============================================================ */
 
-const io =
-  new Server(
-    httpServer,
-    {
-      cors: {
-        origin: "*",
+const httpServer = createServer(app);
 
-        methods: [
-          "GET",
-          "POST"
-        ]
-      }
-    }
-  );
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
 
+/* ============================================================
+   CONFIG
+============================================================ */
 
 const MAX_PLAYERS = 8;
 const MIN_PLAYERS = 2;
@@ -45,7 +44,8 @@ const STREAK_BONUS_CAP = 50;
 
 const rooms = new Map();
 
-const ROOM_CHARACTERS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const ROOM_CHARACTERS =
+  "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
 const CATEGORIES = [
   "programming",
@@ -60,11 +60,13 @@ const CATEGORIES = [
 
 /* ============================================================
    QUESTION BANK
+   72 QUESTIONS
 ============================================================ */
 
 const QUESTION_BANK = [
 
-  // PROGRAMMING
+  /* PROGRAMMING */
+
   {
     id: "programming-easy-1",
     category: "programming",
@@ -73,6 +75,7 @@ const QUESTION_BANK = [
     options: ["func", "def", "function", "define"],
     correctIndex: 1
   },
+
   {
     id: "programming-easy-2",
     category: "programming",
@@ -81,6 +84,7 @@ const QUESTION_BANK = [
     options: ["//", "#", "<!-- -->", "/* */"],
     correctIndex: 1
   },
+
   {
     id: "programming-easy-3",
     category: "programming",
@@ -89,6 +93,7 @@ const QUESTION_BANK = [
     options: ["Integer", "Boolean", "String", "Float"],
     correctIndex: 1
   },
+
   {
     id: "programming-medium-1",
     category: "programming",
@@ -97,6 +102,7 @@ const QUESTION_BANK = [
     options: ["O(1)", "O(log n)", "O(n)", "O(n log n)"],
     correctIndex: 0
   },
+
   {
     id: "programming-medium-2",
     category: "programming",
@@ -110,22 +116,35 @@ const QUESTION_BANK = [
     ],
     correctIndex: 0
   },
+
   {
     id: "programming-medium-3",
     category: "programming",
     difficulty: "medium",
     text: "Which sorting algorithm has average time complexity O(n log n)?",
-    options: ["Bubble sort", "Merge sort", "Selection sort", "Insertion sort"],
+    options: [
+      "Bubble sort",
+      "Merge sort",
+      "Selection sort",
+      "Insertion sort"
+    ],
     correctIndex: 1
   },
+
   {
     id: "programming-hard-1",
     category: "programming",
     difficulty: "hard",
     text: "Which principle says software entities should be open for extension but closed for modification?",
-    options: ["DRY", "KISS", "Open/Closed Principle", "YAGNI"],
+    options: [
+      "DRY",
+      "KISS",
+      "Open/Closed Principle",
+      "YAGNI"
+    ],
     correctIndex: 2
   },
+
   {
     id: "programming-hard-2",
     category: "programming",
@@ -139,16 +158,23 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "programming-hard-3",
     category: "programming",
     difficulty: "hard",
     text: "Which design pattern restricts a class to a single instance?",
-    options: ["Factory", "Singleton", "Observer", "Decorator"],
+    options: [
+      "Factory",
+      "Singleton",
+      "Observer",
+      "Decorator"
+    ],
     correctIndex: 1
   },
 
-  // AI
+  /* AI */
+
   {
     id: "ai-easy-1",
     category: "ai",
@@ -162,6 +188,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "ai-easy-2",
     category: "ai",
@@ -175,14 +202,21 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "ai-easy-3",
     category: "ai",
     difficulty: "easy",
     text: "Which company created ChatGPT?",
-    options: ["Google", "Anthropic", "OpenAI", "Meta"],
+    options: [
+      "Google",
+      "Anthropic",
+      "OpenAI",
+      "Meta"
+    ],
     correctIndex: 2
   },
+
   {
     id: "ai-medium-1",
     category: "ai",
@@ -196,6 +230,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 2
   },
+
   {
     id: "ai-medium-2",
     category: "ai",
@@ -209,6 +244,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "ai-medium-3",
     category: "ai",
@@ -222,32 +258,51 @@ const QUESTION_BANK = [
     ],
     correctIndex: 0
   },
+
   {
     id: "ai-hard-1",
     category: "ai",
     difficulty: "hard",
     text: "Which activation function is commonly used in hidden layers of modern neural networks?",
-    options: ["ReLU", "Softmax", "Linear only", "Identity only"],
+    options: [
+      "ReLU",
+      "Softmax",
+      "Linear only",
+      "Identity only"
+    ],
     correctIndex: 0
   },
+
   {
     id: "ai-hard-2",
     category: "ai",
     difficulty: "hard",
     text: "Which technique reduces overfitting by randomly disabling neurons during training?",
-    options: ["Dropout", "Batch normalization", "Gradient clipping", "Pooling"],
+    options: [
+      "Dropout",
+      "Batch normalization",
+      "Gradient clipping",
+      "Pooling"
+    ],
     correctIndex: 0
   },
+
   {
     id: "ai-hard-3",
     category: "ai",
     difficulty: "hard",
     text: "What is the core mechanism behind Transformer models?",
-    options: ["Convolution", "Recurrence", "Self-attention", "Pooling"],
+    options: [
+      "Convolution",
+      "Recurrence",
+      "Self-attention",
+      "Pooling"
+    ],
     correctIndex: 2
   },
 
-  // COMPUTER SCIENCE
+  /* COMPUTER SCIENCE */
+
   {
     id: "cs-easy-1",
     category: "computer-science",
@@ -261,6 +316,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 0
   },
+
   {
     id: "cs-easy-2",
     category: "computer-science",
@@ -274,30 +330,49 @@ const QUESTION_BANK = [
     ],
     correctIndex: 0
   },
+
   {
     id: "cs-easy-3",
     category: "computer-science",
     difficulty: "easy",
     text: "Which number system uses only 0s and 1s?",
-    options: ["Decimal", "Binary", "Hexadecimal", "Octal"],
+    options: [
+      "Decimal",
+      "Binary",
+      "Hexadecimal",
+      "Octal"
+    ],
     correctIndex: 1
   },
+
   {
     id: "cs-medium-1",
     category: "computer-science",
     difficulty: "medium",
     text: "Which data structure follows FIFO ordering?",
-    options: ["Stack", "Queue", "Tree", "Heap"],
+    options: [
+      "Stack",
+      "Queue",
+      "Tree",
+      "Heap"
+    ],
     correctIndex: 1
   },
+
   {
     id: "cs-medium-2",
     category: "computer-science",
     difficulty: "medium",
     text: "Which data structure uses LIFO ordering?",
-    options: ["Queue", "Stack", "Array", "Linked list"],
+    options: [
+      "Queue",
+      "Stack",
+      "Array",
+      "Linked list"
+    ],
     correctIndex: 1
   },
+
   {
     id: "cs-medium-3",
     category: "computer-science",
@@ -311,40 +386,65 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "cs-hard-1",
     category: "computer-science",
     difficulty: "hard",
     text: "What is the time complexity of binary search on a sorted array?",
-    options: ["O(1)", "O(log n)", "O(n)", "O(n²)"],
+    options: [
+      "O(1)",
+      "O(log n)",
+      "O(n)",
+      "O(n²)"
+    ],
     correctIndex: 1
   },
+
   {
     id: "cs-hard-2",
     category: "computer-science",
     difficulty: "hard",
     text: "What is the worst-case time complexity of quicksort?",
-    options: ["O(n log n)", "O(n)", "O(n²)", "O(log n)"],
+    options: [
+      "O(n log n)",
+      "O(n)",
+      "O(n²)",
+      "O(log n)"
+    ],
     correctIndex: 2
   },
+
   {
     id: "cs-hard-3",
     category: "computer-science",
     difficulty: "hard",
     text: "Which traversal visits a binary tree's root before its children?",
-    options: ["In-order", "Post-order", "Pre-order", "Level-order"],
+    options: [
+      "In-order",
+      "Post-order",
+      "Pre-order",
+      "Level-order"
+    ],
     correctIndex: 2
   },
 
-  // DATABASES
+  /* DATABASES */
+
   {
     id: "db-easy-1",
     category: "databases",
     difficulty: "easy",
     text: "Which SQL command retrieves rows from a table?",
-    options: ["GET", "SELECT", "READ", "FETCHROW"],
+    options: [
+      "GET",
+      "SELECT",
+      "READ",
+      "FETCHROW"
+    ],
     correctIndex: 1
   },
+
   {
     id: "db-easy-2",
     category: "databases",
@@ -358,22 +458,35 @@ const QUESTION_BANK = [
     ],
     correctIndex: 0
   },
+
   {
     id: "db-easy-3",
     category: "databases",
     difficulty: "easy",
     text: "Which command adds new rows to a table?",
-    options: ["INSERT", "ADD", "APPEND", "CREATE"],
+    options: [
+      "INSERT",
+      "ADD",
+      "APPEND",
+      "CREATE"
+    ],
     correctIndex: 0
   },
+
   {
     id: "db-medium-1",
     category: "databases",
     difficulty: "medium",
     text: "What does a primary key uniquely identify?",
-    options: ["A database", "A table", "A row in a table", "A SQL query"],
+    options: [
+      "A database",
+      "A table",
+      "A row in a table",
+      "A SQL query"
+    ],
     correctIndex: 2
   },
+
   {
     id: "db-medium-2",
     category: "databases",
@@ -387,22 +500,35 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "db-medium-3",
     category: "databases",
     difficulty: "medium",
     text: "What type of database uses tables with rows and columns?",
-    options: ["Relational", "Document", "Graph", "Key-value"],
+    options: [
+      "Relational",
+      "Document",
+      "Graph",
+      "Key-value"
+    ],
     correctIndex: 0
   },
+
   {
     id: "db-hard-1",
     category: "databases",
     difficulty: "hard",
     text: "Which normal form removes transitive dependencies?",
-    options: ["1NF", "2NF", "3NF", "4NF"],
+    options: [
+      "1NF",
+      "2NF",
+      "3NF",
+      "4NF"
+    ],
     correctIndex: 2
   },
+
   {
     id: "db-hard-2",
     category: "databases",
@@ -416,32 +542,51 @@ const QUESTION_BANK = [
     ],
     correctIndex: 0
   },
+
   {
     id: "db-hard-3",
     category: "databases",
     difficulty: "hard",
     text: "Which SQL clause combines rows from two tables based on a related column?",
-    options: ["WHERE", "JOIN", "GROUP BY", "UNION"],
+    options: [
+      "WHERE",
+      "JOIN",
+      "GROUP BY",
+      "UNION"
+    ],
     correctIndex: 1
   },
 
-  // WEB DEVELOPMENT
+  /* WEB DEVELOPMENT */
+
   {
     id: "web-easy-1",
     category: "web-development",
     difficulty: "easy",
     text: "Which language structures the content of a web page?",
-    options: ["HTML", "CSS", "SQL", "Bash"],
+    options: [
+      "HTML",
+      "CSS",
+      "SQL",
+      "Bash"
+    ],
     correctIndex: 0
   },
+
   {
     id: "web-easy-2",
     category: "web-development",
     difficulty: "easy",
     text: "Which language is primarily used to style web pages?",
-    options: ["HTML", "CSS", "SQL", "Python"],
+    options: [
+      "HTML",
+      "CSS",
+      "SQL",
+      "Python"
+    ],
     correctIndex: 1
   },
+
   {
     id: "web-easy-3",
     category: "web-development",
@@ -455,22 +600,35 @@ const QUESTION_BANK = [
     ],
     correctIndex: 0
   },
+
   {
     id: "web-medium-1",
     category: "web-development",
     difficulty: "medium",
     text: "Which HTTP method is conventionally used to create a resource?",
-    options: ["GET", "POST", "HEAD", "OPTIONS"],
+    options: [
+      "GET",
+      "POST",
+      "HEAD",
+      "OPTIONS"
+    ],
     correctIndex: 1
   },
+
   {
     id: "web-medium-2",
     category: "web-development",
     difficulty: "medium",
     text: "Which JavaScript concept lets a function remember variables from its outer scope?",
-    options: ["Hoisting", "Closure", "Promise", "Callback"],
+    options: [
+      "Hoisting",
+      "Closure",
+      "Promise",
+      "Callback"
+    ],
     correctIndex: 1
   },
+
   {
     id: "web-medium-3",
     category: "web-development",
@@ -484,6 +642,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 0
   },
+
   {
     id: "web-hard-1",
     category: "web-development",
@@ -497,14 +656,21 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "web-hard-2",
     category: "web-development",
     difficulty: "hard",
     text: "Which HTTP status code indicates a resource was not found?",
-    options: ["200", "301", "404", "500"],
+    options: [
+      "200",
+      "301",
+      "404",
+      "500"
+    ],
     correctIndex: 2
   },
+
   {
     id: "web-hard-3",
     category: "web-development",
@@ -519,7 +685,8 @@ const QUESTION_BANK = [
     correctIndex: 1
   },
 
-  // NETWORKING
+  /* NETWORKING */
+
   {
     id: "networking-easy-1",
     category: "networking",
@@ -533,38 +700,63 @@ const QUESTION_BANK = [
     ],
     correctIndex: 0
   },
+
   {
     id: "networking-easy-2",
     category: "networking",
     difficulty: "easy",
     text: "What device connects multiple networks together?",
-    options: ["Router", "Monitor", "Keyboard", "Printer"],
+    options: [
+      "Router",
+      "Monitor",
+      "Keyboard",
+      "Printer"
+    ],
     correctIndex: 0
   },
+
   {
     id: "networking-easy-3",
     category: "networking",
     difficulty: "easy",
     text: "What does Wi-Fi primarily use to transmit data?",
-    options: ["Radio waves", "Sound waves", "Light waves", "Sound cables"],
+    options: [
+      "Radio waves",
+      "Sound waves",
+      "Light waves",
+      "Sound cables"
+    ],
     correctIndex: 0
   },
+
   {
     id: "networking-medium-1",
     category: "networking",
     difficulty: "medium",
     text: "Which protocol translates domain names into IP addresses?",
-    options: ["DHCP", "DNS", "FTP", "SSH"],
+    options: [
+      "DHCP",
+      "DNS",
+      "FTP",
+      "SSH"
+    ],
     correctIndex: 1
   },
+
   {
     id: "networking-medium-2",
     category: "networking",
     difficulty: "medium",
     text: "Which port does HTTPS typically use?",
-    options: ["21", "80", "443", "8080"],
+    options: [
+      "21",
+      "80",
+      "443",
+      "8080"
+    ],
     correctIndex: 2
   },
+
   {
     id: "networking-medium-3",
     category: "networking",
@@ -578,22 +770,35 @@ const QUESTION_BANK = [
     ],
     correctIndex: 0
   },
+
   {
     id: "networking-hard-1",
     category: "networking",
     difficulty: "hard",
     text: "Which transport protocol provides reliable and ordered delivery?",
-    options: ["UDP", "ICMP", "TCP", "ARP"],
+    options: [
+      "UDP",
+      "ICMP",
+      "TCP",
+      "ARP"
+    ],
     correctIndex: 2
   },
+
   {
     id: "networking-hard-2",
     category: "networking",
     difficulty: "hard",
     text: "Which layer of the OSI model handles routing between networks?",
-    options: ["Data link", "Network", "Transport", "Session"],
+    options: [
+      "Data link",
+      "Network",
+      "Transport",
+      "Session"
+    ],
     correctIndex: 1
   },
+
   {
     id: "networking-hard-3",
     category: "networking",
@@ -608,15 +813,22 @@ const QUESTION_BANK = [
     correctIndex: 1
   },
 
-  // CLOUD
+  /* CLOUD */
+
   {
     id: "cloud-easy-1",
     category: "cloud",
     difficulty: "easy",
     text: "Which cloud service model provides virtualized computing resources?",
-    options: ["IaaS", "SaaS", "LAN", "DNS"],
+    options: [
+      "IaaS",
+      "SaaS",
+      "LAN",
+      "DNS"
+    ],
     correctIndex: 0
   },
+
   {
     id: "cloud-easy-2",
     category: "cloud",
@@ -630,22 +842,35 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "cloud-easy-3",
     category: "cloud",
     difficulty: "easy",
     text: "Which company operates AWS?",
-    options: ["Google", "Microsoft", "Amazon", "IBM"],
+    options: [
+      "Google",
+      "Microsoft",
+      "Amazon",
+      "IBM"
+    ],
     correctIndex: 2
   },
+
   {
     id: "cloud-medium-1",
     category: "cloud",
     difficulty: "medium",
     text: "Which cloud property allows resources to scale with demand?",
-    options: ["Elasticity", "Normalization", "Compilation", "Locality"],
+    options: [
+      "Elasticity",
+      "Normalization",
+      "Compilation",
+      "Locality"
+    ],
     correctIndex: 0
   },
+
   {
     id: "cloud-medium-2",
     category: "cloud",
@@ -659,6 +884,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "cloud-medium-3",
     category: "cloud",
@@ -672,14 +898,21 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "cloud-hard-1",
     category: "cloud",
     difficulty: "hard",
     text: "Which service model provides a managed application platform?",
-    options: ["IaaS", "PaaS", "DNS", "LAN"],
+    options: [
+      "IaaS",
+      "PaaS",
+      "DNS",
+      "LAN"
+    ],
     correctIndex: 1
   },
+
   {
     id: "cloud-hard-2",
     category: "cloud",
@@ -693,6 +926,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "cloud-hard-3",
     category: "cloud",
@@ -707,7 +941,8 @@ const QUESTION_BANK = [
     correctIndex: 1
   },
 
-  // CYBERSECURITY
+  /* CYBERSECURITY */
+
   {
     id: "security-easy-1",
     category: "cybersecurity",
@@ -721,6 +956,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "security-easy-2",
     category: "cybersecurity",
@@ -734,6 +970,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "security-easy-3",
     category: "cybersecurity",
@@ -747,6 +984,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 0
   },
+
   {
     id: "security-medium-1",
     category: "cybersecurity",
@@ -760,6 +998,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 0
   },
+
   {
     id: "security-medium-2",
     category: "cybersecurity",
@@ -773,6 +1012,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 0
   },
+
   {
     id: "security-medium-3",
     category: "cybersecurity",
@@ -786,6 +1026,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "security-hard-1",
     category: "cybersecurity",
@@ -799,6 +1040,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 0
   },
+
   {
     id: "security-hard-2",
     category: "cybersecurity",
@@ -812,6 +1054,7 @@ const QUESTION_BANK = [
     ],
     correctIndex: 1
   },
+
   {
     id: "security-hard-3",
     category: "cybersecurity",
@@ -839,9 +1082,12 @@ function shuffle(array) {
   const result = [...array];
 
   for (let i = result.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(
+      Math.random() * (i + 1)
+    );
 
-    [result[i], result[j]] = [result[j], result[i]];
+    [result[i], result[j]] =
+      [result[j], result[i]];
   }
 
   return result;
@@ -852,11 +1098,16 @@ function cleanName(value) {
     .trim()
     .replace(/\s+/g, " ");
 
-  if (name.length < 2 || name.length > 16) {
+  if (
+    name.length < 2 ||
+    name.length > 16
+  ) {
     return null;
   }
 
-  if (!/^[A-Za-z0-9 _-]+$/.test(name)) {
+  if (
+    !/^[A-Za-z0-9 _-]+$/.test(name)
+  ) {
     return null;
   }
 
@@ -864,7 +1115,9 @@ function cleanName(value) {
 }
 
 function normalizeRoomCode(value) {
-  return String(value || "").trim().toUpperCase();
+  return String(value || "")
+    .trim()
+    .toUpperCase();
 }
 
 function generateRoomCode() {
@@ -875,7 +1128,8 @@ function generateRoomCode() {
 
     for (let i = 0; i < 6; i++) {
       const index = Math.floor(
-        Math.random() * ROOM_CHARACTERS.length
+        Math.random() *
+          ROOM_CHARACTERS.length
       );
 
       code += ROOM_CHARACTERS[index];
@@ -891,16 +1145,20 @@ function generateRoomCode() {
 
 function shuffleQuestionOptions(question) {
   const order = shuffle(
-    question.options.map((_, index) => index)
+    question.options.map(
+      (_, index) => index
+    )
   );
 
   const options = order.map(
-    (originalIndex) => question.options[originalIndex]
+    (originalIndex) =>
+      question.options[originalIndex]
   );
 
-  const correctIndex = order.indexOf(
-    question.correctIndex
-  );
+  const correctIndex =
+    order.indexOf(
+      question.correctIndex
+    );
 
   return {
     id: question.id,
@@ -913,7 +1171,8 @@ function shuffleQuestionOptions(question) {
 }
 
 function createGameQuestions() {
-  const repeatedCategories = shuffle(CATEGORIES).slice(0, 2);
+  const repeatedCategories =
+    shuffle(CATEGORIES).slice(0, 2);
 
   const categorySlots = shuffle([
     ...CATEGORIES,
@@ -935,70 +1194,116 @@ function createGameQuestions() {
 
   const assignments = [];
 
-  const usedQuestionIds = new Set();
+  const usedQuestionIds =
+    new Set();
 
-  const usedCategoryDifficulty = new Set();
+  const usedCategoryDifficulty =
+    new Set();
 
-  function solve(index, remainingDifficulties) {
-    if (index >= categorySlots.length) {
+  function solve(
+    index,
+    remainingDifficulties
+  ) {
+    if (
+      index >=
+      categorySlots.length
+    ) {
       return true;
     }
 
-    const category = categorySlots[index];
+    const category =
+      categorySlots[index];
 
-    const tryOrder = shuffle(remainingDifficulties);
-
-    for (const difficulty of tryOrder) {
-      const key = `${category}:${difficulty}`;
-
-      if (usedCategoryDifficulty.has(key)) {
-        continue;
-      }
-
-      const candidates = shuffle(
-        QUESTION_BANK.filter(
-          (item) =>
-            item.category === category &&
-            item.difficulty === difficulty &&
-            !usedQuestionIds.has(item.id)
-        )
+    const tryOrder =
+      shuffle(
+        remainingDifficulties
       );
 
-      if (candidates.length === 0) {
+    for (
+      const difficulty of tryOrder
+    ) {
+      const key =
+        `${category}:${difficulty}`;
+
+      if (
+        usedCategoryDifficulty.has(
+          key
+        )
+      ) {
         continue;
       }
 
-      const question = candidates[0];
+      const candidates =
+        shuffle(
+          QUESTION_BANK.filter(
+            (item) =>
+              item.category ===
+                category &&
+              item.difficulty ===
+                difficulty &&
+              !usedQuestionIds.has(
+                item.id
+              )
+          )
+        );
 
-      assignments[index] = question;
+      if (
+        candidates.length === 0
+      ) {
+        continue;
+      }
 
-      usedCategoryDifficulty.add(key);
+      const question =
+        candidates[0];
 
-      usedQuestionIds.add(question.id);
+      assignments[index] =
+        question;
+
+      usedCategoryDifficulty.add(
+        key
+      );
+
+      usedQuestionIds.add(
+        question.id
+      );
 
       const nextRemaining = [
         ...remainingDifficulties
       ];
 
       nextRemaining.splice(
-        nextRemaining.indexOf(difficulty),
+        nextRemaining.indexOf(
+          difficulty
+        ),
         1
       );
 
-      if (solve(index + 1, nextRemaining)) {
+      if (
+        solve(
+          index + 1,
+          nextRemaining
+        )
+      ) {
         return true;
       }
 
-      usedCategoryDifficulty.delete(key);
-      usedQuestionIds.delete(question.id);
+      usedCategoryDifficulty.delete(
+        key
+      );
 
-      assignments[index] = null;
+      usedQuestionIds.delete(
+        question.id
+      );
+
+      assignments[index] =
+        null;
     }
 
     return false;
   }
 
-  const solved = solve(0, difficultyPool);
+  const solved =
+    solve(0, difficultyPool);
 
   if (!solved) {
     throw new Error(
@@ -1006,7 +1311,9 @@ function createGameQuestions() {
     );
   }
 
-  return shuffle(assignments).map(
+  return shuffle(
+    assignments
+  ).map(
     shuffleQuestionOptions
   );
 }
@@ -1016,7 +1323,9 @@ function createGameQuestions() {
 ============================================================ */
 
 function getConnectedPlayers(room) {
-  return [...room.players.values()].filter(
+  return [
+    ...room.players.values()
+  ].filter(
     (player) =>
       player.active &&
       player.connected
@@ -1024,8 +1333,11 @@ function getConnectedPlayers(room) {
 }
 
 function getActivePlayers(room) {
-  return [...room.players.values()].filter(
-    (player) => player.active
+  return [
+    ...room.players.values()
+  ].filter(
+    (player) =>
+      player.active
   );
 }
 
@@ -1038,7 +1350,8 @@ function transferHost(room) {
     return null;
   }
 
-  room.hostPlayerId = newHost.id;
+  room.hostPlayerId =
+    newHost.id;
 
   return newHost;
 }
@@ -1048,35 +1361,59 @@ function transferHost(room) {
 ============================================================ */
 
 function publicRoomState(room) {
-  const players = [
-    ...room.players.values()
-  ]
-    .filter((player) => player.active)
-    .map((player) => ({
-      id: player.id,
-      name: player.name,
-      connected: player.connected,
-      active: player.active,
-      score: player.score,
-      streak: player.streak,
-      isHost:
-        player.id === room.hostPlayerId
-    }));
+  const players =
+    [
+      ...room.players.values()
+    ]
+      .filter(
+        (player) =>
+          player.active
+      )
+      .map(
+        (player) => ({
+          id: player.id,
+          name: player.name,
+          connected:
+            player.connected,
+          active:
+            player.active,
+          score:
+            player.score,
+          streak:
+            player.streak,
+          isHost:
+            player.id ===
+            room.hostPlayerId
+        })
+      );
 
   return {
     code: room.code,
-    status: room.status,
-    hostPlayerId: room.hostPlayerId,
+
+    status:
+      room.status,
+
+    hostPlayerId:
+      room.hostPlayerId,
+
     players,
+
     currentQuestion:
       room.currentQuestionIndex,
+
     answeredCount:
       room.answers.size,
+
     connectedAnswerCount:
-      getConnectedPlayers(room).filter(
+      getConnectedPlayers(
+        room
+      ).filter(
         (player) =>
-          room.answers.has(player.id)
+          room.answers.has(
+            player.id
+          )
       ).length,
+
     questionEndsAt:
       room.questionEndsAt
   };
@@ -1093,7 +1430,10 @@ function broadcastRoom(room) {
    SAFE QUESTION
 ============================================================ */
 
-function safeQuestion(room, player) {
+function safeQuestion(
+  room,
+  player
+) {
   const question =
     room.questions[
       room.currentQuestionIndex
@@ -1104,24 +1444,38 @@ function safeQuestion(room, player) {
   }
 
   const existingAnswer =
-    room.answers.get(player?.id);
+    room.answers.get(
+      player?.id
+    );
 
   const eliminated =
     player
-      ? room.eliminations.get(player.id) || []
+      ? room.eliminations.get(
+          player.id
+        ) || []
       : [];
 
   return {
     id: question.id,
-    category: question.category,
-    difficulty: question.difficulty,
-    text: question.text,
-    options: question.options,
+
+    category:
+      question.category,
+
+    difficulty:
+      question.difficulty,
+
+    text:
+      question.text,
+
+    options:
+      question.options,
 
     number:
-      room.currentQuestionIndex + 1,
+      room.currentQuestionIndex +
+      1,
 
-    total: room.questions.length,
+    total:
+      room.questions.length,
 
     startsAt:
       room.questionStartsAt,
@@ -1133,10 +1487,13 @@ function safeQuestion(room, player) {
       room.answers.size,
 
     alreadyAnswered:
-      Boolean(existingAnswer),
+      Boolean(
+        existingAnswer
+      ),
 
     selectedIndex:
-      existingAnswer?.index ?? null,
+      existingAnswer?.index ??
+      null,
 
     streak:
       player?.streak || 0,
@@ -1147,10 +1504,12 @@ function safeQuestion(room, player) {
     powerups: player
       ? {
           fiftyFiftyAvailable:
-            player.powerups.fiftyFifty,
+            player.powerups
+              .fiftyFifty,
 
           doublePointsAvailable:
-            player.powerups.doublePoints,
+            player.powerups
+              .doublePoints,
 
           doublePointsActive:
             player.doublePointsActive
@@ -1174,28 +1533,39 @@ function sendCurrentState(
   );
 
   if (
-    room.status === "countdown" &&
+    room.status ===
+      "countdown" &&
     room.countdownEndsAt
   ) {
-    socket.emit("countdown", {
-      endsAt:
-        room.countdownEndsAt
-    });
-
-    return;
-  }
-
-  if (room.status === "question") {
     socket.emit(
-      "question",
-      safeQuestion(room, player)
+      "countdown",
+      {
+        endsAt:
+          room.countdownEndsAt
+      }
     );
 
     return;
   }
 
   if (
-    room.status === "results" &&
+    room.status ===
+    "question"
+  ) {
+    socket.emit(
+      "question",
+      safeQuestion(
+        room,
+        player
+      )
+    );
+
+    return;
+  }
+
+  if (
+    room.status ===
+      "results" &&
     room.lastResults
   ) {
     socket.emit(
@@ -1207,7 +1577,8 @@ function sendCurrentState(
   }
 
   if (
-    room.status === "finished" &&
+    room.status ===
+      "finished" &&
     room.finalResults
   ) {
     socket.emit(
@@ -1223,12 +1594,18 @@ function sendCurrentState(
 
 function clearRoomTimers(room) {
   if (room.timer) {
-    clearTimeout(room.timer);
+    clearTimeout(
+      room.timer
+    );
+
     room.timer = null;
   }
 
   if (room.cleanupTimer) {
-    clearTimeout(room.cleanupTimer);
+    clearTimeout(
+      room.cleanupTimer
+    );
+
     room.cleanupTimer = null;
   }
 }
@@ -1240,15 +1617,18 @@ function clearRoomTimers(room) {
 function startCountdown(room) {
   clearRoomTimers(room);
 
-  room.status = "countdown";
+  room.status =
+    "countdown";
 
-  room.currentQuestionIndex = -1;
+  room.currentQuestionIndex =
+    -1;
 
   room.questions =
     createGameQuestions();
 
   room.countdownEndsAt =
-    Date.now() + COUNTDOWN_TIME;
+    Date.now() +
+    COUNTDOWN_TIME;
 
   broadcastRoom(room);
 
@@ -1260,9 +1640,13 @@ function startCountdown(room) {
     }
   );
 
-  room.timer = setTimeout(() => {
-    startQuestion(room);
-  }, COUNTDOWN_TIME);
+  room.timer =
+    setTimeout(
+      () => {
+        startQuestion(room);
+      },
+      COUNTDOWN_TIME
+    );
 }
 
 /* ============================================================
@@ -1282,13 +1666,17 @@ function startQuestion(room) {
     return;
   }
 
-  room.status = "question";
+  room.status =
+    "question";
 
-  room.answers = new Map();
+  room.answers =
+    new Map();
 
-  room.eliminations = new Map();
+  room.eliminations =
+    new Map();
 
-  room.lastResults = null;
+  room.lastResults =
+    null;
 
   room.questionStartsAt =
     Date.now();
@@ -1300,7 +1688,8 @@ function startQuestion(room) {
   broadcastRoom(room);
 
   for (
-    const player of room.players.values()
+    const player of
+    room.players.values()
   ) {
     if (
       !player.active ||
@@ -1320,13 +1709,20 @@ function startQuestion(room) {
 
     socket.emit(
       "question",
-      safeQuestion(room, player)
+      safeQuestion(
+        room,
+        player
+      )
     );
   }
 
-  room.timer = setTimeout(() => {
-    finishQuestion(room);
-  }, QUESTION_TIME);
+  room.timer =
+    setTimeout(
+      () => {
+        finishQuestion(room);
+      },
+      QUESTION_TIME
+    );
 }
 
 /* ============================================================
@@ -1334,13 +1730,17 @@ function startQuestion(room) {
 ============================================================ */
 
 function finishQuestion(room) {
-  if (room.status !== "question") {
+  if (
+    room.status !==
+    "question"
+  ) {
     return;
   }
 
   clearRoomTimers(room);
 
-  room.status = "results";
+  room.status =
+    "results";
 
   const question =
     room.questions[
@@ -1348,14 +1748,17 @@ function finishQuestion(room) {
     ];
 
   for (
-    const player of room.players.values()
+    const player of
+    room.players.values()
   ) {
     if (!player.active) {
       continue;
     }
 
     const answer =
-      room.answers.get(player.id);
+      room.answers.get(
+        player.id
+      );
 
     let points = 0;
 
@@ -1376,8 +1779,10 @@ function finishQuestion(room) {
 
       const speedBonus =
         50 *
-        (remaining /
-          QUESTION_TIME);
+        (
+          remaining /
+          QUESTION_TIME
+        );
 
       const streakBonus =
         Math.min(
@@ -1386,11 +1791,12 @@ function finishQuestion(room) {
             STREAK_BONUS_PER_STEP
         );
 
-      points = Math.round(
-        100 +
+      points =
+        Math.round(
+          100 +
           speedBonus +
           streakBonus
-      );
+        );
 
       if (
         player.doublePointsActive
@@ -1406,24 +1812,36 @@ function finishQuestion(room) {
     player.doublePointsActive =
       false;
 
-    player.lastPoints = points;
+    player.lastPoints =
+      points;
 
-    player.score += points;
+    player.score +=
+      points;
   }
 
   const leaderboard =
     getActivePlayers(room)
-      .map((player) => ({
-        id: player.id,
-        name: player.name,
-        points:
-          player.lastPoints || 0,
-        total: player.score,
-        streak: player.streak
-      }))
+      .map(
+        (player) => ({
+          id: player.id,
+
+          name: player.name,
+
+          points:
+            player.lastPoints ||
+            0,
+
+          total:
+            player.score,
+
+          streak:
+            player.streak
+        })
+      )
       .sort(
         (a, b) =>
-          b.total - a.total
+          b.total -
+          a.total
       );
 
   room.lastResults = {
@@ -1436,7 +1854,8 @@ function finishQuestion(room) {
         question.correctIndex
       ],
 
-    players: leaderboard
+    players:
+      leaderboard
   };
 
   broadcastRoom(room);
@@ -1446,16 +1865,20 @@ function finishQuestion(room) {
     room.lastResults
   );
 
-  room.timer = setTimeout(() => {
-    if (
-      room.currentQuestionIndex >=
-      room.questions.length - 1
-    ) {
-      finishGame(room);
-    } else {
-      startQuestion(room);
-    }
-  }, RESULTS_TIME);
+  room.timer =
+    setTimeout(
+      () => {
+        if (
+          room.currentQuestionIndex >=
+          room.questions.length - 1
+        ) {
+          finishGame(room);
+        } else {
+          startQuestion(room);
+        }
+      },
+      RESULTS_TIME
+    );
 }
 
 /* ============================================================
@@ -1465,19 +1888,26 @@ function finishQuestion(room) {
 function finishGame(room) {
   clearRoomTimers(room);
 
-  room.status = "finished";
+  room.status =
+    "finished";
 
   const leaderboard =
-    [...room.players.values()]
-      .map((player) => ({
-        id: player.id,
-        name: player.name,
-        total: player.score,
-        left: !player.active
-      }))
+    [
+      ...room.players.values()
+    ]
+      .map(
+        (player) => ({
+          id: player.id,
+          name: player.name,
+          total: player.score,
+          left:
+            !player.active
+        })
+      )
       .sort(
         (a, b) =>
-          b.total - a.total
+          b.total -
+          a.total
       );
 
   const highestScore =
@@ -1494,9 +1924,12 @@ function finishGame(room) {
 
   room.finalResults = {
     leaderboard,
+
     winners,
+
     winner:
-      winners[0] || null
+      winners[0] ||
+      null
   };
 
   broadcastRoom(room);
@@ -1507,9 +1940,14 @@ function finishGame(room) {
   );
 
   room.cleanupTimer =
-    setTimeout(() => {
-      rooms.delete(room.code);
-    }, ROOM_IDLE_CLEANUP);
+    setTimeout(
+      () => {
+        rooms.delete(
+          room.code
+        );
+      },
+      ROOM_IDLE_CLEANUP
+    );
 }
 
 /* ============================================================
@@ -1519,28 +1957,38 @@ function finishGame(room) {
 function resetRoomForReplay(room) {
   clearRoomTimers(room);
 
-  room.status = "waiting";
+  room.status =
+    "waiting";
 
-  room.currentQuestionIndex = -1;
+  room.currentQuestionIndex =
+    -1;
 
   room.questions = [];
 
-  room.answers = new Map();
+  room.answers =
+    new Map();
 
-  room.eliminations = new Map();
+  room.eliminations =
+    new Map();
 
-  room.questionStartsAt = null;
+  room.questionStartsAt =
+    null;
 
-  room.questionEndsAt = null;
+  room.questionEndsAt =
+    null;
 
-  room.countdownEndsAt = null;
+  room.countdownEndsAt =
+    null;
 
-  room.lastResults = null;
+  room.lastResults =
+    null;
 
-  room.finalResults = null;
+  room.finalResults =
+    null;
 
   for (
-    const [id, player] of room.players
+    const [id, player] of
+    room.players
   ) {
     if (!player.active) {
       room.players.delete(id);
@@ -1579,36 +2027,42 @@ function scheduleReconnectExpiry(
   room,
   player
 ) {
-  if (player.reconnectTimer) {
+  if (
+    player.reconnectTimer
+  ) {
     clearTimeout(
       player.reconnectTimer
     );
   }
 
   player.reconnectTimer =
-    setTimeout(() => {
-      if (
-        player.connected ||
-        !player.active
-      ) {
-        return;
-      }
+    setTimeout(
+      () => {
+        if (
+          player.connected ||
+          !player.active
+        ) {
+          return;
+        }
 
-      player.active = false;
+        player.active =
+          false;
 
-      if (
-        room.hostPlayerId ===
-        player.id
-      ) {
-        transferHost(room);
-      }
+        if (
+          room.hostPlayerId ===
+          player.id
+        ) {
+          transferHost(room);
+        }
 
-      broadcastRoom(room);
+        broadcastRoom(room);
 
-      checkMinPlayers(room);
+        checkMinPlayers(room);
 
-      maybeDeleteEmptyRoom(room);
-    }, RECONNECT_GRACE);
+        maybeDeleteEmptyRoom(room);
+      },
+      RECONNECT_GRACE
+    );
 }
 
 /* ============================================================
@@ -1616,14 +2070,19 @@ function scheduleReconnectExpiry(
 ============================================================ */
 
 function checkEarlyFinish(room) {
-  if (room.status !== "question") {
+  if (
+    room.status !==
+    "question"
+  ) {
     return;
   }
 
   const connected =
     getConnectedPlayers(room);
 
-  if (connected.length === 0) {
+  if (
+    connected.length === 0
+  ) {
     return;
   }
 
@@ -1646,9 +2105,12 @@ function checkEarlyFinish(room) {
 
 function checkMinPlayers(room) {
   if (
-    room.status === "question" ||
-    room.status === "countdown" ||
-    room.status === "results"
+    room.status ===
+      "question" ||
+    room.status ===
+      "countdown" ||
+    room.status ===
+      "results"
   ) {
     if (
       getActivePlayers(room)
@@ -1663,9 +2125,13 @@ function checkMinPlayers(room) {
    DELETE EMPTY ROOM
 ============================================================ */
 
-function maybeDeleteEmptyRoom(room) {
+function maybeDeleteEmptyRoom(
+  room
+) {
   const stillPresent =
-    [...room.players.values()].some(
+    [
+      ...room.players.values()
+    ].some(
       (player) =>
         player.active ||
         player.connected
@@ -1673,7 +2139,10 @@ function maybeDeleteEmptyRoom(room) {
 
   if (!stillPresent) {
     clearRoomTimers(room);
-    rooms.delete(room.code);
+
+    rooms.delete(
+      room.code
+    );
   }
 }
 
@@ -1686,21 +2155,29 @@ function removePlayer(
   playerId
 ) {
   const player =
-    room.players.get(playerId);
+    room.players.get(
+      playerId
+    );
 
   if (!player) {
     return;
   }
 
-  player.active = false;
-  player.connected = false;
+  player.active =
+    false;
 
-  if (player.reconnectTimer) {
+  player.connected =
+    false;
+
+  if (
+    player.reconnectTimer
+  ) {
     clearTimeout(
       player.reconnectTimer
     );
 
-    player.reconnectTimer = null;
+    player.reconnectTimer =
+      null;
   }
 
   if (
@@ -1729,7 +2206,9 @@ function createRoom(
   callback
 ) {
   const name =
-    cleanName(payload?.name);
+    cleanName(
+      payload?.name
+    );
 
   if (!name) {
     callback({
@@ -1750,64 +2229,93 @@ function createRoom(
     randomId();
 
   const room = {
-    code: roomCode,
+    code:
+      roomCode,
 
-    status: "waiting",
+    status:
+      "waiting",
 
-    hostPlayerId: playerId,
+    hostPlayerId:
+      playerId,
 
-    players: new Map(),
+    players:
+      new Map(),
 
-    questions: [],
+    questions:
+      [],
 
-    currentQuestionIndex: -1,
+    currentQuestionIndex:
+      -1,
 
-    answers: new Map(),
+    answers:
+      new Map(),
 
-    eliminations: new Map(),
+    eliminations:
+      new Map(),
 
-    questionStartsAt: null,
+    questionStartsAt:
+      null,
 
-    questionEndsAt: null,
+    questionEndsAt:
+      null,
 
-    countdownEndsAt: null,
+    countdownEndsAt:
+      null,
 
-    timer: null,
+    timer:
+      null,
 
-    cleanupTimer: null,
+    cleanupTimer:
+      null,
 
-    lastResults: null,
+    lastResults:
+      null,
 
-    finalResults: null
+    finalResults:
+      null
   };
 
   const player = {
-    id: playerId,
+    id:
+      playerId,
 
-    token,
+    token:
+      token,
 
-    name,
+    name:
+      name,
 
-    score: 0,
+    score:
+      0,
 
-    streak: 0,
+    streak:
+      0,
 
-    lastPoints: 0,
+    lastPoints:
+      0,
 
     powerups: {
-      fiftyFifty: true,
-      doublePoints: true
+      fiftyFifty:
+        true,
+
+      doublePoints:
+        true
     },
 
-    doublePointsActive: false,
+    doublePointsActive:
+      false,
 
-    active: true,
+    active:
+      true,
 
-    connected: true,
+    connected:
+      true,
 
-    socketId: socket.id,
+    socketId:
+      socket.id,
 
-    reconnectTimer: null
+    reconnectTimer:
+      null
   };
 
   room.players.set(
@@ -1820,7 +2328,9 @@ function createRoom(
     room
   );
 
-  socket.join(roomCode);
+  socket.join(
+    roomCode
+  );
 
   socket.data.roomCode =
     roomCode;
@@ -1833,9 +2343,13 @@ function createRoom(
 
   callback({
     ok: true,
+
     roomCode,
+
     playerId,
+
     token,
+
     name
   });
 
@@ -1852,7 +2366,9 @@ function joinRoom(
   callback
 ) {
   const name =
-    cleanName(payload?.name);
+    cleanName(
+      payload?.name
+    );
 
   const roomCode =
     normalizeRoomCode(
@@ -1882,17 +2398,23 @@ function joinRoom(
   }
 
   const room =
-    rooms.get(roomCode);
+    rooms.get(
+      roomCode
+    );
 
   if (!room) {
     callback({
-      error: "Room not found."
+      error:
+        "Room not found."
     });
 
     return;
   }
 
-  if (room.status !== "waiting") {
+  if (
+    room.status !==
+    "waiting"
+  ) {
     callback({
       error:
         "The game has already started. New players cannot join."
@@ -1902,7 +2424,9 @@ function joinRoom(
   }
 
   const activePlayers =
-    getActivePlayers(room);
+    getActivePlayers(
+      room
+    );
 
   if (
     activePlayers.length >=
@@ -1919,7 +2443,8 @@ function joinRoom(
   const duplicate =
     activePlayers.some(
       (player) =>
-        player.name.toLowerCase() ===
+        player.name
+          .toLowerCase() ===
         name.toLowerCase()
     );
 
@@ -1939,32 +2464,46 @@ function joinRoom(
     randomId();
 
   const player = {
-    id: playerId,
+    id:
+      playerId,
 
-    token,
+    token:
+      token,
 
-    name,
+    name:
+      name,
 
-    score: 0,
+    score:
+      0,
 
-    streak: 0,
+    streak:
+      0,
 
-    lastPoints: 0,
+    lastPoints:
+      0,
 
     powerups: {
-      fiftyFifty: true,
-      doublePoints: true
+      fiftyFifty:
+        true,
+
+      doublePoints:
+        true
     },
 
-    doublePointsActive: false,
+    doublePointsActive:
+      false,
 
-    active: true,
+    active:
+      true,
 
-    connected: true,
+    connected:
+      true,
 
-    socketId: socket.id,
+    socketId:
+      socket.id,
 
-    reconnectTimer: null
+    reconnectTimer:
+      null
   };
 
   room.players.set(
@@ -1972,7 +2511,9 @@ function joinRoom(
     player
   );
 
-  socket.join(roomCode);
+  socket.join(
+    roomCode
+  );
 
   socket.data.roomCode =
     roomCode;
@@ -1985,9 +2526,13 @@ function joinRoom(
 
   callback({
     ok: true,
+
     roomCode,
+
     playerId,
+
     token,
+
     name
   });
 
@@ -2009,10 +2554,15 @@ function reconnectPlayer(
     );
 
   const token =
-    String(payload?.token || "");
+    String(
+      payload?.token ||
+      ""
+    );
 
   const room =
-    rooms.get(roomCode);
+    rooms.get(
+      roomCode
+    );
 
   if (!room) {
     callback({
@@ -2024,12 +2574,14 @@ function reconnectPlayer(
   }
 
   const player =
-    [...room.players.values()]
-      .find(
-        (candidate) =>
-          candidate.token === token &&
-          candidate.active
-      );
+    [
+      ...room.players.values()
+    ].find(
+      (candidate) =>
+        candidate.token ===
+          token &&
+        candidate.active
+    );
 
   if (!player) {
     callback({
@@ -2040,7 +2592,9 @@ function reconnectPlayer(
     return;
   }
 
-  if (player.reconnectTimer) {
+  if (
+    player.reconnectTimer
+  ) {
     clearTimeout(
       player.reconnectTimer
     );
@@ -2049,12 +2603,15 @@ function reconnectPlayer(
       null;
   }
 
-  player.connected = true;
+  player.connected =
+    true;
 
   player.socketId =
     socket.id;
 
-  socket.join(roomCode);
+  socket.join(
+    roomCode
+  );
 
   socket.data.roomCode =
     roomCode;
@@ -2067,10 +2624,17 @@ function reconnectPlayer(
 
   callback({
     ok: true,
+
     roomCode,
-    playerId: player.id,
-    token: player.token,
-    name: player.name
+
+    playerId:
+      player.id,
+
+    token:
+      player.token,
+
+    name:
+      player.name
   });
 
   sendCurrentState(
@@ -2089,6 +2653,7 @@ function reconnectPlayer(
 io.on(
   "connection",
   (socket) => {
+
     console.log(
       `Socket connected: ${socket.id}`
     );
@@ -2098,12 +2663,16 @@ io.on(
     socket.on(
       "time_sync",
       (callback) => {
+
         if (
           typeof callback ===
           "function"
         ) {
-          callback(Date.now());
+          callback(
+            Date.now()
+          );
         }
+
       }
     );
 
@@ -2111,12 +2680,17 @@ io.on(
 
     socket.on(
       "create_room",
-      (payload, callback) => {
+      (
+        payload,
+        callback
+      ) => {
+
         createRoom(
           socket,
           payload,
           callback
         );
+
       }
     );
 
@@ -2124,12 +2698,17 @@ io.on(
 
     socket.on(
       "join_room",
-      (payload, callback) => {
+      (
+        payload,
+        callback
+      ) => {
+
         joinRoom(
           socket,
           payload,
           callback
         );
+
       }
     );
 
@@ -2137,12 +2716,17 @@ io.on(
 
     socket.on(
       "reconnect_player",
-      (payload, callback) => {
+      (
+        payload,
+        callback
+      ) => {
+
         reconnectPlayer(
           socket,
           payload,
           callback
         );
+
       }
     );
 
@@ -2150,13 +2734,18 @@ io.on(
 
     socket.on(
       "start_game",
-      (payload, callback) => {
+      (
+        payload,
+        callback
+      ) => {
+
         const room =
           rooms.get(
             socket.data.roomCode
           );
 
         if (!room) {
+
           callback({
             error:
               "Room not found."
@@ -2171,6 +2760,7 @@ io.on(
           );
 
         if (!player) {
+
           callback({
             error:
               "Player not found."
@@ -2183,6 +2773,7 @@ io.on(
           room.hostPlayerId !==
           player.id
         ) {
+
           callback({
             error:
               "Only the host can start the game."
@@ -2195,6 +2786,7 @@ io.on(
           room.status !==
           "waiting"
         ) {
+
           callback({
             error:
               "The game has already started."
@@ -2205,8 +2797,10 @@ io.on(
 
         if (
           getActivePlayers(room)
-            .length < MIN_PLAYERS
+            .length <
+          MIN_PLAYERS
         ) {
+
           callback({
             error:
               "At least 2 players are required."
@@ -2216,19 +2810,28 @@ io.on(
         }
 
         try {
-          startCountdown(room);
+
+          startCountdown(
+            room
+          );
 
           callback({
             ok: true
           });
+
         } catch (error) {
-          console.error(error);
+
+          console.error(
+            error
+          );
 
           callback({
             error:
               "Unable to create the game questions."
           });
+
         }
+
       }
     );
 
@@ -2236,13 +2839,18 @@ io.on(
 
     socket.on(
       "use_powerup",
-      (payload, callback) => {
+      (
+        payload,
+        callback
+      ) => {
+
         const room =
           rooms.get(
             socket.data.roomCode
           );
 
         if (!room) {
+
           callback?.({
             error:
               "Room not found."
@@ -2261,6 +2869,7 @@ io.on(
           !player.active ||
           !player.connected
         ) {
+
           callback?.({
             error:
               "You are not an active player."
@@ -2273,6 +2882,7 @@ io.on(
           room.status !==
           "question"
         ) {
+
           callback?.({
             error:
               "Power-ups can only be used during a question."
@@ -2286,6 +2896,7 @@ io.on(
             player.id
           )
         ) {
+
           callback?.({
             error:
               "You already answered this question."
@@ -2306,10 +2917,12 @@ io.on(
           type ===
           "fiftyFifty"
         ) {
+
           if (
             !player.powerups
               .fiftyFifty
           ) {
+
             callback?.({
               error:
                 "You already used 50/50."
@@ -2333,10 +2946,14 @@ io.on(
           const eliminated =
             shuffle(
               wrongIndexes
-            ).slice(0, 2);
+            ).slice(
+              0,
+              2
+            );
 
           player.powerups
-            .fiftyFifty = false;
+            .fiftyFifty =
+            false;
 
           room.eliminations.set(
             player.id,
@@ -2345,6 +2962,7 @@ io.on(
 
           callback?.({
             ok: true,
+
             eliminatedOptions:
               eliminated
           });
@@ -2356,10 +2974,12 @@ io.on(
           type ===
           "doublePoints"
         ) {
+
           if (
             !player.powerups
               .doublePoints
           ) {
+
             callback?.({
               error:
                 "You already used Double Points."
@@ -2369,13 +2989,15 @@ io.on(
           }
 
           player.powerups
-            .doublePoints = false;
+            .doublePoints =
+            false;
 
           player.doublePointsActive =
             true;
 
           callback?.({
             ok: true,
+
             doublePointsActive:
               true
           });
@@ -2387,6 +3009,7 @@ io.on(
           error:
             "Unknown power-up."
         });
+
       }
     );
 
@@ -2394,13 +3017,18 @@ io.on(
 
     socket.on(
       "submit_answer",
-      (payload, callback) => {
+      (
+        payload,
+        callback
+      ) => {
+
         const room =
           rooms.get(
             socket.data.roomCode
           );
 
         if (!room) {
+
           callback({
             error:
               "Room not found."
@@ -2419,6 +3047,7 @@ io.on(
           !player.active ||
           !player.connected
         ) {
+
           callback({
             error:
               "You are not an active player."
@@ -2431,6 +3060,7 @@ io.on(
           room.status !==
           "question"
         ) {
+
           callback({
             error:
               "The question is no longer active."
@@ -2449,6 +3079,7 @@ io.on(
           payload?.questionId !==
             question.id
         ) {
+
           callback({
             error:
               "This question is no longer current."
@@ -2462,6 +3093,7 @@ io.on(
             player.id
           )
         ) {
+
           callback({
             error:
               "You have already answered this question."
@@ -2481,9 +3113,9 @@ io.on(
           ) ||
           index < 0 ||
           index >=
-            question.options
-              .length
+            question.options.length
         ) {
+
           callback({
             error:
               "Invalid answer."
@@ -2499,6 +3131,7 @@ io.on(
           now >
           room.questionEndsAt
         ) {
+
           callback({
             error:
               "Time is up."
@@ -2524,7 +3157,9 @@ io.on(
             room
           );
 
-        io.to(room.code).emit(
+        io.to(
+          room.code
+        ).emit(
           "answer_count",
           {
             count:
@@ -2535,7 +3170,10 @@ io.on(
           }
         );
 
-        checkEarlyFinish(room);
+        checkEarlyFinish(
+          room
+        );
+
       }
     );
 
@@ -2543,13 +3181,18 @@ io.on(
 
     socket.on(
       "play_again",
-      (payload, callback) => {
+      (
+        payload,
+        callback
+      ) => {
+
         const room =
           rooms.get(
             socket.data.roomCode
           );
 
         if (!room) {
+
           callback?.({
             error:
               "Room not found."
@@ -2564,6 +3207,7 @@ io.on(
           );
 
         if (!player) {
+
           callback?.({
             error:
               "Player not found."
@@ -2576,6 +3220,7 @@ io.on(
           room.hostPlayerId !==
           player.id
         ) {
+
           callback?.({
             error:
               "Only the host can restart the game."
@@ -2588,6 +3233,7 @@ io.on(
           room.status !==
           "finished"
         ) {
+
           callback?.({
             error:
               "The game hasn't finished yet."
@@ -2596,11 +3242,14 @@ io.on(
           return;
         }
 
-        resetRoomForReplay(room);
+        resetRoomForReplay(
+          room
+        );
 
         callback?.({
           ok: true
         });
+
       }
     );
 
@@ -2608,13 +3257,18 @@ io.on(
 
     socket.on(
       "leave_game",
-      (payload, callback) => {
+      (
+        payload,
+        callback
+      ) => {
+
         const room =
           rooms.get(
             socket.data.roomCode
           );
 
         if (!room) {
+
           callback?.({
             ok: true
           });
@@ -2627,11 +3281,14 @@ io.on(
           socket.data.playerId
         );
 
-        socket.leave(room.code);
+        socket.leave(
+          room.code
+        );
 
         callback?.({
           ok: true
         });
+
       }
     );
 
@@ -2640,6 +3297,7 @@ io.on(
     socket.on(
       "disconnect",
       () => {
+
         console.log(
           `Socket disconnected: ${socket.id}`
         );
@@ -2665,41 +3323,64 @@ io.on(
           return;
         }
 
-        player.connected = false;
+        player.connected =
+          false;
 
-        player.socketId = null;
+        player.socketId =
+          null;
 
         if (
           room.hostPlayerId ===
           player.id
         ) {
-          transferHost(room);
+
+          transferHost(
+            room
+          );
+
         }
 
-        broadcastRoom(room);
+        broadcastRoom(
+          room
+        );
 
         scheduleReconnectExpiry(
           room,
           player
         );
 
-        checkEarlyFinish(room);
+        checkEarlyFinish(
+          room
+        );
+
       }
     );
+
   }
 );
 
 /* ============================================================
    DASHBOARD
+   VISUAL DESIGN UPDATED TO MATCH SECOND PHOTO STYLE
+   ONLY EXISTING SERVER INFORMATION IS USED
 ============================================================ */
 
 app.get("/", (req, res) => {
+
   res.send(`
+
 <!DOCTYPE html>
+
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<meta
+  name="viewport"
+  content="width=device-width, initial-scale=1.0"
+/>
 
 <title>Tech Battle Server</title>
 
@@ -2709,484 +3390,1272 @@ app.get("/", (req, res) => {
   box-sizing: border-box;
 }
 
+html,
 body {
   margin: 0;
+  min-height: 100%;
+}
+
+body {
+
   min-height: 100vh;
 
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-family:
+    Inter,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
 
-  font-family: "Courier New", monospace;
-
-  background:
-    radial-gradient(
-      circle at 20% 20%,
-      #18204a 0%,
-      transparent 30%
-    ),
-    radial-gradient(
-      circle at 80% 80%,
-      #062d31 0%,
-      transparent 30%
-    ),
-    #080817;
-
-  color: #00ff88;
+  color: #ffffff;
 
   overflow-x: hidden;
+
+  position: relative;
+
+  background:
+
+    radial-gradient(
+      circle at 50% 8%,
+      rgba(
+        0,
+        255,
+        154,
+        0.15
+      ),
+      transparent 22%
+    ),
+
+    radial-gradient(
+      circle at 10% 70%,
+      rgba(
+        0,
+        255,
+        190,
+        0.08
+      ),
+      transparent 25%
+    ),
+
+    radial-gradient(
+      circle at 90% 75%,
+      rgba(
+        70,
+        120,
+        255,
+        0.10
+      ),
+      transparent 28%
+    ),
+
+    linear-gradient(
+      180deg,
+      #05070f 0%,
+      #071018 50%,
+      #03060b 100%
+    );
 }
 
 body::before {
+
   content: "";
 
   position: fixed;
+
   inset: 0;
 
+  pointer-events: none;
+
+  opacity: 0.55;
+
   background-image:
+
     radial-gradient(
-      #ffffff 1px,
-      transparent 1px
+      circle,
+      rgba(
+        255,
+        255,
+        255,
+        0.9
+      )
+      0 1px,
+      transparent 1.5px
+    ),
+
+    radial-gradient(
+      circle,
+      rgba(
+        0,
+        255,
+        166,
+        0.65
+      )
+      0 1px,
+      transparent 1.5px
     );
 
-  background-size: 120px 120px;
+  background-size:
+    115px 115px,
+    185px 185px;
 
-  opacity: 0.18;
+  background-position:
+    12px 25px,
+    70px 80px;
+}
+
+body::after {
+
+  content: "";
+
+  position: fixed;
+
+  width: 720px;
+
+  height: 720px;
+
+  right: -260px;
+
+  top: 130px;
+
+  border-radius: 50%;
+
+  background:
+
+    radial-gradient(
+      circle at 35% 30%,
+      rgba(
+        255,
+        255,
+        255,
+        0.14
+      ),
+      transparent 8%
+    ),
+
+    radial-gradient(
+      circle at 45% 45%,
+      #182332 0%,
+      #0a111a 52%,
+      #02040a 70%
+    );
+
+  box-shadow:
+
+    inset
+      -70px
+      -35px
+      100px
+      rgba(
+        0,
+        0,
+        0,
+        0.75
+      );
+
+  opacity: 0.58;
 
   pointer-events: none;
 }
 
-.server-card {
-  width: min(900px, 92%);
+.page {
 
-  padding: 45px;
+  position: relative;
 
-  border: 2px solid #00ff88;
+  z-index: 1;
 
-  border-radius: 14px;
+  width:
+    min(
+      1120px,
+      92vw
+    );
 
-  background:
-    rgba(8, 8, 25, 0.92);
+  margin:
+    0 auto;
 
-  box-shadow:
-    0 0 20px
-      rgba(0, 255, 136, 0.35),
-
-    inset 0 0 35px
-      rgba(0, 255, 136, 0.04);
+  padding:
+    48px 0 34px;
 }
 
-.logo {
+.hero {
+
   text-align: center;
 
-  font-size: 65px;
-
-  margin-bottom: 10px;
+  position: relative;
 }
 
-h1 {
-  margin: 0;
+.crown {
 
-  text-align: center;
+  font-size:
+    clamp(
+      42px,
+      7vw,
+      70px
+    );
+
+  line-height: 0.8;
+
+  filter:
+    drop-shadow(
+      0 0 18px
+      rgba(
+        255,
+        205,
+        70,
+        0.55
+      )
+    );
+}
+
+.weapons {
+
+  position: absolute;
+
+  left: 2%;
+
+  top: 42px;
+
+  font-size:
+    clamp(
+      38px,
+      6vw,
+      68px
+    );
+
+  transform:
+    rotate(-28deg);
+
+  filter:
+    drop-shadow(
+      0 0 14px
+      rgba(
+        0,
+        255,
+        160,
+        0.45
+      )
+    );
+}
+
+.controller {
+
+  position: absolute;
+
+  right: 2%;
+
+  top: 45px;
 
   font-size:
     clamp(
       40px,
-      8vw,
-      78px
+      6vw,
+      68px
     );
 
-  letter-spacing: 8px;
-
-  color: #ffffff;
-
-  text-shadow:
-    0 0 10px #00ff88,
-    0 0 25px #00ff88,
-    0 0 50px #00ff88;
-}
-
-.subtitle {
-  text-align: center;
-
-  margin:
-    15px 0 35px;
-
-  color: #00ffff;
-
-  font-size: 18px;
-}
-
-.status {
-  text-align: center;
-
-  padding: 14px;
-
-  margin-bottom: 28px;
-
-  border:
-    1px solid #00ff88;
-
-  background:
-    rgba(
-      0,
-      255,
-      136,
-      0.08
-    );
-
-  font-size: 20px;
-
-  text-shadow:
-    0 0 8px #00ff88;
-}
-
-.status span {
-  color: #ffffff;
-}
-
-.grid {
-  display: grid;
-
-  grid-template-columns:
-    repeat(3, 1fr);
-
-  gap: 18px;
-}
-
-.box {
-  padding:
-    25px 15px;
-
-  min-height: 115px;
-
-  border:
-    1px solid #00ff88;
-
-  background:
-    rgba(
-      0,
-      255,
-      136,
-      0.06
-    );
-
-  text-align: center;
-
-  transition: 0.2s;
-}
-
-.box:hover {
   transform:
-    translateY(-3px);
+    rotate(9deg);
 
-  box-shadow:
-    0 0 18px
+  filter:
+    drop-shadow(
+      0 0 14px
       rgba(
         0,
         255,
-        136,
-        0.3
+        160,
+        0.40
+      )
+    );
+}
+
+h1 {
+
+  margin:
+    8px 0 4px;
+
+  font-size:
+    clamp(
+      48px,
+      9vw,
+      92px
+    );
+
+  line-height:
+    0.95;
+
+  letter-spacing:
+    0.09em;
+
+  font-weight:
+    950;
+
+  font-style:
+    italic;
+
+  color:
+    #ffffff;
+
+  text-shadow:
+
+    0 0 8px
+      rgba(
+        0,
+        255,
+        160,
+        0.9
+      ),
+
+    0 0 25px
+      rgba(
+        0,
+        255,
+        160,
+        0.55
+      ),
+
+    0 0 55px
+      rgba(
+        0,
+        255,
+        160,
+        0.25
       );
 }
 
-.icon {
-  font-size: 25px;
+.title-line {
 
-  margin-bottom: 10px;
+  width:
+    min(
+      650px,
+      75vw
+    );
+
+  height:
+    2px;
+
+  margin:
+    14px auto 16px;
+
+  background:
+    linear-gradient(
+      90deg,
+      transparent,
+      #00ff9a,
+      transparent
+    );
+
+  box-shadow:
+    0 0 18px
+    rgba(
+      0,
+      255,
+      154,
+      0.8
+    );
 }
 
-.label {
-  color: #7fffd4;
+.subtitle {
 
-  font-size: 12px;
+  color:
+    #d9fff1;
 
-  letter-spacing: 2px;
-}
+  font-size:
+    clamp(
+      12px,
+      2vw,
+      17px
+    );
 
-.value {
-  margin-top: 8px;
+  letter-spacing:
+    0.22em;
 
-  color: #ffffff;
+  text-transform:
+    uppercase;
 
-  font-size: 20px;
+  font-weight:
+    800;
 }
 
 .online {
-  color: #00ff88;
 
-  text-shadow:
-    0 0 8px #00ff88;
-}
+  width:
+    fit-content;
 
-.links {
-  display: flex;
+  margin:
+    25px auto 8px;
 
-  gap: 15px;
-
-  margin-top: 28px;
-}
-
-.links a {
-  flex: 1;
-
-  padding: 15px;
-
-  text-align: center;
-
-  text-decoration: none;
-
-  color: #00ff88;
+  padding:
+    9px 20px;
 
   border:
-    1px solid #00ff88;
+    1px solid
+    rgba(
+      0,
+      255,
+      154,
+      0.55
+    );
+
+  border-radius:
+    999px;
 
   background:
     rgba(
       0,
       255,
-      136,
-      0.05
+      154,
+      0.07
     );
 
-  transition: 0.2s;
-}
+  color:
+    #00ff9a;
 
-.links a:hover {
-  color: #080817;
+  font-size:
+    13px;
 
-  background: #00ff88;
+  font-weight:
+    900;
+
+  letter-spacing:
+    0.15em;
 
   box-shadow:
-    0 0 20px #00ff88;
+
+    0 0 25px
+    rgba(
+      0,
+      255,
+      154,
+      0.12
+    ),
+
+    inset
+    0 0 20px
+    rgba(
+      0,
+      255,
+      154,
+      0.04
+    );
+}
+
+.dot {
+
+  display:
+    inline-block;
+
+  width:
+    9px;
+
+  height:
+    9px;
+
+  margin-right:
+    9px;
+
+  border-radius:
+    50%;
+
+  background:
+    #00ff9a;
+
+  box-shadow:
+    0 0 12px
+    #00ff9a;
+}
+
+.tagline {
+
+  color:
+    #8da5a0;
+
+  margin:
+    10px 0 28px;
+
+  font-size:
+    14px;
+}
+
+.health {
+
+  padding:
+    22px 24px;
+
+  border:
+    1px solid
+    rgba(
+      0,
+      255,
+      154,
+      0.30
+    );
+
+  border-radius:
+    18px;
+
+  background:
+    rgba(
+      6,
+      17,
+      20,
+      0.76
+    );
+
+  box-shadow:
+
+    0 0 30px
+    rgba(
+      0,
+      255,
+      154,
+      0.07
+    ),
+
+    inset
+    0 0 35px
+    rgba(
+      0,
+      255,
+      154,
+      0.025
+    );
+
+  margin-bottom:
+    20px;
+}
+
+.health-head {
+
+  display:
+    flex;
+
+  justify-content:
+    space-between;
+
+  gap:
+    20px;
+
+  align-items:
+    center;
+
+  margin-bottom:
+    12px;
+}
+
+.health-label {
+
+  font-weight:
+    800;
+
+  color:
+    #dffef2;
+}
+
+.health-value {
+
+  color:
+    #00ff9a;
+
+  font-size:
+    18px;
+
+  font-weight:
+    900;
+}
+
+.bar {
+
+  height:
+    13px;
+
+  border-radius:
+    999px;
+
+  background:
+    #111b20;
+
+  overflow:
+    hidden;
+
+  border:
+    1px solid
+    rgba(
+      255,
+      255,
+      255,
+      0.07
+    );
+}
+
+.bar > div {
+
+  width:
+    100%;
+
+  height:
+    100%;
+
+  border-radius:
+    inherit;
+
+  background:
+    linear-gradient(
+      90deg,
+      #00a96d,
+      #00ff9a,
+      #7dffd1
+    );
+
+  box-shadow:
+    0 0 18px
+    rgba(
+      0,
+      255,
+      154,
+      0.8
+    );
+}
+
+.cards {
+
+  display:
+    grid;
+
+  grid-template-columns:
+    repeat(
+      3,
+      1fr
+    );
+
+  gap:
+    14px;
+}
+
+.card {
+
+  min-height:
+    132px;
+
+  padding:
+    22px 16px;
+
+  text-align:
+    center;
+
+  border:
+    1px solid
+    rgba(
+      0,
+      255,
+      154,
+      0.24
+    );
+
+  border-radius:
+    18px;
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(
+        10,
+        28,
+        30,
+        0.86
+      ),
+      rgba(
+        4,
+        12,
+        17,
+        0.88
+      )
+    );
+
+  box-shadow:
+
+    inset
+    0 0 25px
+    rgba(
+      0,
+      255,
+      154,
+      0.025
+    ),
+
+    0 12px 35px
+    rgba(
+      0,
+      0,
+      0,
+      0.22
+    );
+
+  transition:
+    transform
+    0.2s,
+    border-color
+    0.2s,
+    box-shadow
+    0.2s;
+}
+
+.card:hover {
+
+  transform:
+    translateY(-4px);
+
+  border-color:
+    rgba(
+      0,
+      255,
+      154,
+      0.62
+    );
+
+  box-shadow:
+    0 0 28px
+    rgba(
+      0,
+      255,
+      154,
+      0.10
+    );
+}
+
+.icon {
+
+  font-size:
+    29px;
+
+  margin-bottom:
+    9px;
+}
+
+.label {
+
+  color:
+    #78908c;
+
+  text-transform:
+    uppercase;
+
+  letter-spacing:
+    0.16em;
+
+  font-size:
+    10px;
+
+  font-weight:
+    800;
+}
+
+.value {
+
+  margin-top:
+    9px;
+
+  color:
+    #ffffff;
+
+  font-size:
+    19px;
+
+  font-weight:
+    900;
+
+  letter-spacing:
+    0.06em;
+}
+
+.value.green {
+
+  color:
+    #00ff9a;
+
+  text-shadow:
+    0 0 12px
+    rgba(
+      0,
+      255,
+      154,
+      0.4
+    );
+}
+
+.links {
+
+  display:
+    grid;
+
+  grid-template-columns:
+    repeat(
+      2,
+      1fr
+    );
+
+  gap:
+    14px;
+
+  margin-top:
+    20px;
+}
+
+.link {
+
+  display:
+    flex;
+
+  align-items:
+    center;
+
+  justify-content:
+    space-between;
+
+  gap:
+    15px;
+
+  padding:
+    18px 20px;
+
+  color:
+    #ffffff;
+
+  text-decoration:
+    none;
+
+  border:
+    1px solid
+    rgba(
+      0,
+      255,
+      154,
+      0.22
+    );
+
+  border-radius:
+    15px;
+
+  background:
+    rgba(
+      5,
+      15,
+      20,
+      0.72
+    );
+
+  transition:
+    0.2s;
+}
+
+.link:hover {
+
+  border-color:
+    #00ff9a;
+
+  box-shadow:
+    0 0 24px
+    rgba(
+      0,
+      255,
+      154,
+      0.1
+    );
+
+  transform:
+    translateY(-2px);
+}
+
+.link strong {
+
+  color:
+    #dffff3;
+
+  font-size:
+    13px;
+}
+
+.link small {
+
+  color:
+    #00ff9a;
+
+  font-weight:
+    800;
 }
 
 .footer {
-  text-align: center;
 
-  margin-top: 30px;
+  text-align:
+    center;
 
-  color: #687878;
+  margin-top:
+    30px;
 
-  font-size: 12px;
+  color:
+    #627772;
+
+  font-size:
+    12px;
+
+  letter-spacing:
+    0.08em;
 }
 
 @media (
-  max-width: 700px
+  max-width: 800px
 ) {
 
-  .server-card {
-    padding: 25px;
+  .weapons,
+  .controller {
+
+    opacity:
+      0.25;
   }
 
-  .grid {
+  .cards {
+
+    grid-template-columns:
+      repeat(
+        2,
+        1fr
+      );
+  }
+}
+
+@media (
+  max-width: 520px
+) {
+
+  .page {
+
+    padding-top:
+      30px;
+  }
+
+  .cards,
+  .links {
+
     grid-template-columns:
       1fr;
   }
 
-  h1 {
-    letter-spacing: 4px;
+  .weapons,
+  .controller {
+
+    display:
+      none;
   }
 
-  .links {
-    flex-direction:
-      column;
-  }
+  .health-head {
 
+    align-items:
+      flex-start;
+  }
 }
 
 </style>
+
 </head>
 
 <body>
 
-<div class="server-card">
+<main class="page">
 
-  <div class="logo">
-    ⚡
-  </div>
+  <section class="hero">
 
-  <h1>
-    TECH BATTLE
-  </h1>
+    <div class="weapons">
+      ⚔️
+    </div>
 
-  <div class="subtitle">
-    ⚔ REAL-TIME MULTIPLAYER SERVER ⚔
-  </div>
+    <div class="controller">
+      🎮
+    </div>
 
-  <div class="status">
+    <div class="crown">
+      👑
+    </div>
 
-    &gt; SYSTEM STATUS:
+    <h1>
+      TECH BATTLE
+    </h1>
 
-    <span class="online">
-      ● ONLINE
-    </span>
+    <div class="title-line"></div>
 
-  </div>
+    <div class="subtitle">
+      ⚔️ REAL-TIME MULTIPLAYER TECHNOLOGY QUIZ 🎮
+    </div>
 
-  <div class="grid">
+    <div class="online">
 
-    <div class="box">
+      <span class="dot"></span>
 
-      <div class="icon">
-        🟢
+      SERVER ONLINE
+
+    </div>
+
+    <p class="tagline">
+
+      The Tech Battle server is running
+      and ready for players.
+
+    </p>
+
+  </section>
+
+
+  <section class="health">
+
+    <div class="health-head">
+
+      <div class="health-label">
+
+        💚 Server Health
+
       </div>
 
-      <div class="label">
-        SERVER STATUS
-      </div>
+      <div class="health-value">
 
-      <div class="value online">
-        ACTIVE
+        100%
+
       </div>
 
     </div>
 
-    <div class="box">
+    <div class="bar">
+
+      <div></div>
+
+    </div>
+
+  </section>
+
+
+  <section class="cards">
+
+    <article class="card">
+
+      <div class="icon">
+        ⚡
+      </div>
+
+      <div class="label">
+        Status
+      </div>
+
+      <div class="value green">
+        ACTIVE
+      </div>
+
+    </article>
+
+
+    <article class="card">
 
       <div class="icon">
         ⚔️
       </div>
 
       <div class="label">
-        MULTIPLAYER
+        Multiplayer
       </div>
 
       <div class="value">
         ENABLED
       </div>
 
-    </div>
+    </article>
 
-    <div class="box">
+
+    <article class="card">
 
       <div class="icon">
         🌐
       </div>
 
       <div class="label">
-        ENVIRONMENT
+        Environment
       </div>
 
       <div class="value">
         PRODUCTION
       </div>
 
-    </div>
+    </article>
 
-    <div class="box">
+
+    <article class="card">
 
       <div class="icon">
         🔌
       </div>
 
       <div class="label">
-        PORT
+        Port
       </div>
 
       <div class="value">
         ${PORT}
       </div>
 
-    </div>
+    </article>
 
-    <div class="box">
+
+    <article class="card">
 
       <div class="icon">
         ❤️
       </div>
 
       <div class="label">
-        HEALTH
+        Health
       </div>
 
-      <div class="value online">
+      <div class="value green">
         100%
       </div>
 
-    </div>
+    </article>
 
-    <div class="box">
+
+    <article class="card">
 
       <div class="icon">
         🎮
       </div>
 
       <div class="label">
-        GAME ENGINE
+        Game Engine
       </div>
 
       <div class="value">
         READY
       </div>
 
-    </div>
+    </article>
 
-  </div>
+  </section>
 
-  <div class="links">
 
-    <a href="/health">
-      ❤️ HEALTH CHECK
+  <section class="links">
+
+    <a
+      class="link"
+      href="/health"
+    >
+
+      <strong>
+        ❤️ HEALTH CHECK
+      </strong>
+
+      <small>
+        /health
+      </small>
+
     </a>
 
-    <a href="/api">
-      ⚡ SERVER API
+
+    <a
+      class="link"
+      href="/api"
+    >
+
+      <strong>
+        ⚡ SERVER API
+      </strong>
+
+      <small>
+        /api
+      </small>
+
     </a>
 
-  </div>
+  </section>
+
 
   <div class="footer">
-    TECH BATTLE SERVER • SOCKET.IO • REAL-TIME GAMING
+
+    <b>
+      TECH BATTLE
+    </b>
+
+    • Multiplayer Quiz Server
+    • Socket.IO Online
+
   </div>
 
-</div>
+</main>
 
 </body>
+
 </html>
+
   `);
+
 });
 
 /* ============================================================
    API INFO
 ============================================================ */
 
-app.get("/api", (req, res) => {
-  res.json({
-    service: "Tech Battle Server",
+app.get(
+  "/api",
+  (req, res) => {
 
-    status: "online",
+    res.json({
 
-    multiplayer: true,
+      service:
+        "Tech Battle Server",
 
-    socketIO: true,
+      status:
+        "online",
 
-    environment:
-      process.env.NODE_ENV ||
-      "production",
+      multiplayer:
+        true,
 
-    endpoints: {
-      health: "/health",
-      socket: "Socket.IO"
-    }
-  });
-});
+      socketIO:
+        true,
+
+      environment:
+        process.env.NODE_ENV ||
+        "production",
+
+      endpoints: {
+
+        health:
+          "/health",
+
+        socket:
+          "Socket.IO"
+
+      }
+
+    });
+
+  }
+);
 
 /* ============================================================
    HEALTH CHECK
 ============================================================ */
 
-app.get("/health", (req, res) => {
-  res.json({
-    ok: true,
+app.get(
+  "/health",
+  (req, res) => {
 
-    service:
-      "Tech Battle server",
+    res.json({
 
-    timestamp:
-      Date.now()
-  });
-});
+      ok:
+        true,
+
+      service:
+        "Tech Battle server",
+
+      timestamp:
+        Date.now()
+
+    });
+
+  }
+);
 
 /* ============================================================
    START SERVER
@@ -3196,6 +4665,7 @@ httpServer.listen(
   PORT,
   "0.0.0.0",
   () => {
+
     console.log(
       "======================================"
     );
@@ -3223,5 +4693,6 @@ httpServer.listen(
     console.log(
       "======================================"
     );
+
   }
 );
