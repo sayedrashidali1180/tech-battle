@@ -1,6 +1,7 @@
 import React, {
   useEffect,
   useMemo,
+  useRef,
   useState
 } from "react";
 
@@ -65,6 +66,21 @@ const DIFFICULTY_LABELS = {
 };
 
 
+const MATCH_SIZE_LABELS = {
+  2: "⚔️ 2 Players",
+  4: "⚔️ 4 Players",
+  6: "⚔️ 6 Players",
+  8: "⚔️ 8 Players"
+};
+
+const BATTLE_FORMATS = {
+  2: { "1v1": "🥊 1v1", ffa: "⚡ Free For All" },
+  4: { "2v2": "👥 2v2", "1v1v1v1": "⚔️ 1v1v1v1", ffa: "⚡ Free For All" },
+  6: { "3v3": "👥 3v3", "2v2v2": "⚔️ 2v2v2", ffa: "⚡ Free For All" },
+  8: { "4v4": "👥 4v4", "2v2v2v2": "⚔️ 2v2v2v2", ffa: "⚡ Free For All" }
+};
+
+
 // --------------------------------------------------
 // APP
 // --------------------------------------------------
@@ -77,6 +93,14 @@ function App() {
   const [quizType, setQuizType] = useState("mixed");
 
   const [quizTypeOpen, setQuizTypeOpen] = useState(false);
+
+  const [matchSize, setMatchSize] = useState(2);
+
+  const [matchSizeOpen, setMatchSizeOpen] = useState(false);
+
+  const [battleFormat, setBattleFormat] = useState("1v1");
+
+  const [battleFormatOpen, setBattleFormatOpen] = useState(false);
 
   const [name, setName] = useState("");
 
@@ -91,6 +115,18 @@ function App() {
   const [questionResults, setQuestionResults] = useState(null);
 
   const [finalResults, setFinalResults] = useState(null);
+
+  const [battleIntro, setBattleIntro] = useState(null);
+
+  const [leaderboard, setLeaderboard] = useState([]);
+
+  const [teamLeaderboard, setTeamLeaderboard] = useState([]);
+
+  const [rankChanges, setRankChanges] = useState({});
+
+  const leaderboardRef = useRef([]);
+
+  const battleIntroTimerRef = useRef(null);
 
   const [countdown, setCountdown] = useState(null);
 
@@ -163,13 +199,57 @@ function App() {
     };
 
 
+    const handleBattleIntro = (data) => {
+      setBattleIntro(data);
+      setLeaderboard(data.players || []);
+      setTeamLeaderboard(data.teams || []);
+      leaderboardRef.current = data.players || [];
+      setScreen("battle-intro");
+
+      if (battleIntroTimerRef.current) {
+        clearTimeout(battleIntroTimerRef.current);
+      }
+
+      battleIntroTimerRef.current = setTimeout(() => {
+        battleIntroTimerRef.current = null;
+        setScreen("countdown");
+      }, 1700);
+    };
+
+
+    const handleLeaderboardUpdate = (data) => {
+      const nextPlayers = data?.players || [];
+      const previous = leaderboardRef.current || [];
+      const previousRanks = new Map(
+        previous.map((player) => [player.id, player.rank])
+      );
+      const changes = {};
+
+      nextPlayers.forEach((player) => {
+        const oldRank = previousRanks.get(player.id);
+        if (oldRank && oldRank !== player.rank) {
+          changes[player.id] = player.rank < oldRank ? "up" : "down";
+        }
+      });
+
+      leaderboardRef.current = nextPlayers;
+      setLeaderboard(nextPlayers);
+      setTeamLeaderboard(data?.teams || []);
+      setRankChanges(changes);
+
+      window.setTimeout(() => setRankChanges({}), 850);
+    };
+
+
     const handleCountdown = (data) => {
       setCountdown(data);
 
       setQuestion(null);
       setQuestionResults(null);
 
-      setScreen("countdown");
+      if (!battleIntroTimerRef.current) {
+        setScreen("countdown");
+      }
     };
 
 
@@ -239,6 +319,10 @@ function App() {
 
     socket.on("room_state", handleRoomState);
 
+    socket.on("battle_intro", handleBattleIntro);
+
+    socket.on("leaderboard_update", handleLeaderboardUpdate);
+
     socket.on("countdown", handleCountdown);
 
     socket.on("question", handleQuestion);
@@ -257,7 +341,15 @@ function App() {
 
       socket.off("room_state", handleRoomState);
 
+      socket.off("battle_intro", handleBattleIntro);
+
+      socket.off("leaderboard_update", handleLeaderboardUpdate);
+
       socket.off("countdown", handleCountdown);
+
+      if (battleIntroTimerRef.current) {
+        clearTimeout(battleIntroTimerRef.current);
+      }
 
       socket.off("question", handleQuestion);
 
@@ -362,6 +454,10 @@ function App() {
     const handlePointerDown = (event) => {
       if (!event.target.closest(".quiz-type-select")) {
         setQuizTypeOpen(false);
+      }
+      if (!event.target.closest(".battle-select")) {
+        setMatchSizeOpen(false);
+        setBattleFormatOpen(false);
       }
     };
 
@@ -481,7 +577,9 @@ function App() {
         {
           name: cleanedName,
           roomCode: mode === "join" ? roomCode.toUpperCase() : undefined,
-          quizType: mode === "create" ? quizType : undefined
+          quizType: mode === "create" ? quizType : undefined,
+          matchSize: mode === "create" ? matchSize : undefined,
+          battleFormat: mode === "create" ? battleFormat : undefined
         },
         (response) => {
           setBusy(false);
@@ -643,6 +741,10 @@ function App() {
 
     setRoomCode("");
     setName("");
+    setBattleIntro(null);
+    setLeaderboard([]);
+    setTeamLeaderboard([]);
+    leaderboardRef.current = [];
 
     // Clear a shared-link room param so leaving doesn't re-trigger it.
     if (window.location.search) {
@@ -868,53 +970,151 @@ function App() {
           </label>
 
           {mode === "create" && (
-            <label>
-              Quiz Type
-              <div className="quiz-type-select">
-                <button
-                  type="button"
-                  className={`quiz-type-trigger ${
-                    quizTypeOpen ? "open" : ""
-                  }`}
-                  aria-haspopup="listbox"
-                  aria-expanded={quizTypeOpen}
-                  onClick={() => setQuizTypeOpen((open) => !open)}
-                >
-                  <span>{QUIZ_TYPE_LABELS[quizType]}</span>
-                  <span
-                    className={`quiz-type-arrow ${
-                      quizTypeOpen ? "up" : ""
-                    }`}
-                    aria-hidden="true"
-                  />
-                </button>
+            <>
+              <label>
+                Quiz Type
+                <div className="quiz-type-select">
+                  <button
+                    type="button"
+                    className={`quiz-type-trigger ${quizTypeOpen ? "open" : ""}`}
+                    aria-haspopup="listbox"
+                    aria-expanded={quizTypeOpen}
+                    onClick={() => setQuizTypeOpen((open) => !open)}
+                  >
+                    <span>{QUIZ_TYPE_LABELS[quizType]}</span>
+                    <span
+                      className={`quiz-type-arrow ${quizTypeOpen ? "up" : ""}`}
+                      aria-hidden="true"
+                    />
+                  </button>
 
-                {quizTypeOpen && (
-                  <div className="quiz-type-menu" role="listbox">
-                    {Object.entries(QUIZ_TYPE_LABELS).map(([value, label]) => (
-                      <button
-                        type="button"
-                        role="option"
-                        aria-selected={quizType === value}
-                        key={value}
-                        className={`quiz-type-option ${
-                          quizType === value ? "selected" : ""
-                        }`}
-                        onClick={() => {
-                          setQuizType(value);
-                          setQuizTypeOpen(false);
-                        }}
-                      >
-                        <span>{label}</span>
-                        {quizType === value && (
-                          <span className="quiz-type-check">✓</span>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </label>
+                  {quizTypeOpen && (
+                    <div className="quiz-type-menu" role="listbox">
+                      {Object.entries(QUIZ_TYPE_LABELS).map(([value, label]) => (
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={quizType === value}
+                          key={value}
+                          className={`quiz-type-option ${
+                            quizType === value ? "selected" : ""
+                          }`}
+                          onClick={() => {
+                            setQuizType(value);
+                            setQuizTypeOpen(false);
+                          }}
+                        >
+                          <span>{label}</span>
+                          {quizType === value && (
+                            <span className="quiz-type-check">✓</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </label>
+
+              <label>
+                Match Size
+                <div className="battle-select">
+                  <button
+                    type="button"
+                    className={`battle-select-trigger ${
+                      matchSizeOpen ? "open" : ""
+                    }`}
+                    onClick={() => {
+                      setMatchSizeOpen((open) => !open);
+                      setBattleFormatOpen(false);
+                    }}
+                  >
+                    <span>{MATCH_SIZE_LABELS[matchSize]}</span>
+                    <span
+                      className={`quiz-type-arrow ${
+                        matchSizeOpen ? "up" : ""
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </button>
+
+                  {matchSizeOpen && (
+                    <div className="battle-select-menu">
+                      {Object.entries(MATCH_SIZE_LABELS).map(([value, label]) => (
+                        <button
+                          type="button"
+                          key={value}
+                          className={`quiz-type-option ${
+                            Number(value) === matchSize ? "selected" : ""
+                          }`}
+                          onClick={() => {
+                            const nextSize = Number(value);
+                            const nextFormat =
+                              Object.keys(BATTLE_FORMATS[nextSize])[0];
+                            setMatchSize(nextSize);
+                            setBattleFormat(nextFormat);
+                            setMatchSizeOpen(false);
+                          }}
+                        >
+                          <span>{label}</span>
+                          {Number(value) === matchSize && (
+                            <span className="quiz-type-check">✓</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </label>
+
+              <label>
+                Battle Format
+                <div className="battle-select">
+                  <button
+                    type="button"
+                    className={`battle-select-trigger ${
+                      battleFormatOpen ? "open" : ""
+                    }`}
+                    onClick={() => {
+                      setBattleFormatOpen((open) => !open);
+                      setMatchSizeOpen(false);
+                    }}
+                  >
+                    <span>{BATTLE_FORMATS[matchSize][battleFormat]}</span>
+                    <span
+                      className={`quiz-type-arrow ${
+                        battleFormatOpen ? "up" : ""
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </button>
+
+                  {battleFormatOpen && (
+                    <div className="battle-select-menu">
+                      {Object.entries(BATTLE_FORMATS[matchSize]).map(
+                        ([value, label]) => (
+                          <button
+                            type="button"
+                            key={value}
+                            className={`quiz-type-option ${
+                              battleFormat === value ? "selected" : ""
+                            }`}
+                            onClick={() => {
+                              setBattleFormat(value);
+                              setBattleFormatOpen(false);
+                            }}
+                          >
+                            <span>{label}</span>
+                            {battleFormat === value && (
+                              <span className="quiz-type-check">✓</span>
+                            )}
+                          </button>
+                        )
+                      )}
+                    </div>
+                  )}
+                </div>
+              </label>
+            </>
           )}
 
           {mode === "join" && (
@@ -950,6 +1150,66 @@ function App() {
 
 
   // --------------------------------------------------
+  // BATTLE INTRO
+  // --------------------------------------------------
+
+  if (screen === "battle-intro" && battleIntro) {
+    const introPlayers = battleIntro.players || [];
+    const introTeams = battleIntro.teams || [];
+
+    return (
+      <Shell hideFooter>
+        <div className="battle-intro-screen">
+          <div className="battle-intro-kicker">TECH BATTLE</div>
+          <h1>⚔️ {battleIntro.battleFormatLabel || "BATTLE"}</h1>
+
+          <div className="battle-versus-layout">
+            <div className="battle-side battle-side-left">
+              <span className="battle-side-label">TEAM A</span>
+              <strong>
+                {introTeams[0]?.name ||
+                  introPlayers[0]?.name ||
+                  "PLAYER 1"}
+              </strong>
+              <div className="battle-side-players">
+                {(introTeams[0]?.players || introPlayers.slice(0, 1)).map(
+                  (player) => (
+                    <span key={player.id}>{player.name}</span>
+                  )
+                )}
+              </div>
+            </div>
+
+            <div className="battle-vs">VS</div>
+
+            <div className="battle-side battle-side-right">
+              <span className="battle-side-label">TEAM B</span>
+              <strong>
+                {introTeams[1]?.name ||
+                  introPlayers[1]?.name ||
+                  "PLAYER 2"}
+              </strong>
+              <div className="battle-side-players">
+                {(introTeams[1]?.players || introPlayers.slice(1, 2)).map(
+                  (player) => (
+                    <span key={player.id}>{player.name}</span>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="battle-intro-meta">
+            {battleIntro.matchSize} PLAYERS <span>•</span>{" "}
+            {battleIntro.battleFormatLabel}
+          </div>
+        </div>
+      </Shell>
+    );
+  }
+
+
+  // --------------------------------------------------
   // COUNTDOWN
   // --------------------------------------------------
 
@@ -973,11 +1233,19 @@ function App() {
   // --------------------------------------------------
 
   if (screen === "waiting") {
-    const activePlayers = room?.players?.filter((player) => player.active) || [];
+    const activePlayers =
+      room?.players?.filter((player) => player.active) || [];
 
     const isHost = room && me && room.hostPlayerId === me.id;
+    const requiredPlayers =
+      room?.requiredPlayers || room?.matchSize || 2;
 
-    const shareUrl = `${window.location.origin}${window.location.pathname}?room=${room?.code || roomCode}`;
+    const shareUrl =
+      `${window.location.origin}${window.location.pathname}?room=${
+        room?.code || roomCode
+      }`;
+
+    const waitingTeams = room?.teams || [];
 
     return (
       <Shell>
@@ -985,50 +1253,94 @@ function App() {
           <div className="waiting-header">
             <div>
               <span className="eyebrow">WAITING ROOM</span>
-
               <h2>Ready for battle?</h2>
             </div>
 
-            <div className="player-count">{activePlayers.length}/8</div>
+            <div className="player-count">
+              {activePlayers.length}/{requiredPlayers}
+            </div>
+          </div>
+
+          <div className="battle-settings-grid">
+            <div className="battle-info-box">
+              <span>QUIZ TYPE</span>
+              <strong>
+                {QUIZ_TYPE_LABELS[room?.quizType] ||
+                  room?.quizTypeLabel ||
+                  "🎯 Mixed Placement"}
+              </strong>
+            </div>
+
+            <div className="battle-info-box">
+              <span>BATTLE</span>
+              <strong>{room?.battleFormatLabel || "1v1"}</strong>
+            </div>
+
+            <div className="battle-info-box">
+              <span>MATCH SIZE</span>
+              <strong>{requiredPlayers} PLAYERS</strong>
+            </div>
           </div>
 
           <div className="room-code-box">
             <span>ROOM CODE</span>
-
             <strong>{room?.code || roomCode}</strong>
 
             <button
               className="copy-button"
               onClick={() =>
-                navigator.clipboard?.writeText(room?.code || roomCode)
+                navigator.clipboard?.writeText(
+                  room?.code || roomCode
+                )
               }
             >
               Copy Code
             </button>
           </div>
 
-          <div className="room-code-box">
-            <span>QUIZ TYPE</span>
-
-            <strong>
-              {QUIZ_TYPE_LABELS[room?.quizType] || "🎯 Mixed Placement"}
-            </strong>
-          </div>
-
           <p className="share-text">
             Share this code, or{" "}
             <button
               className="link-button"
-              onClick={() => navigator.clipboard?.writeText(shareUrl)}
+              onClick={() =>
+                navigator.clipboard?.writeText(shareUrl)
+              }
             >
               copy an invite link
             </button>
             .
           </p>
 
+          {waitingTeams.length > 0 && (
+            <div className="waiting-teams">
+              <div className="players-heading">
+                <h3>Battle Teams</h3>
+                <span>{waitingTeams.length} teams</span>
+              </div>
+
+              <div className="team-grid">
+                {waitingTeams.map((team) => (
+                  <div className="team-card" key={team.id}>
+                    <div className="team-card-top">
+                      <strong>{team.name}</strong>
+                      <span>{team.score} pts</span>
+                    </div>
+
+                    <div className="team-member-list">
+                      {team.players.map((player) => (
+                        <span key={player.id}>
+                          ⚡ {player.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="players-heading">
             <h3>Players</h3>
-
             <span>{activePlayers.length} joined</span>
           </div>
 
@@ -1048,19 +1360,33 @@ function App() {
                       : player.connected
                       ? "Connected"
                       : "Reconnecting..."}
+                    {player.teamName
+                      ? ` • ${player.teamName}`
+                      : ""}
                   </span>
                 </div>
 
-                {player.isHost && <span className="host-badge">👑 HOST</span>}
+                {player.isHost && (
+                  <span className="host-badge">👑 HOST</span>
+                )}
               </div>
             ))}
           </div>
 
           {isHost ? (
-            <button disabled={activePlayers.length < 2} onClick={startGame}>
-              {activePlayers.length < 2
-                ? "Need at least 2 players"
-                : "Start Game →"}
+            <button
+              disabled={activePlayers.length !== requiredPlayers}
+              onClick={startGame}
+            >
+              {activePlayers.length !== requiredPlayers
+                ? `Need ${
+                    requiredPlayers - activePlayers.length
+                  } more player${
+                    requiredPlayers - activePlayers.length === 1
+                      ? ""
+                      : "s"
+                  }`
+                : "Start Battle →"}
             </button>
           ) : (
             <div className="waiting-message">
@@ -1188,6 +1514,13 @@ function App() {
             </div>
           </div>
 
+          <LiveLeaderboard
+            players={leaderboard}
+            teams={teamLeaderboard}
+            me={me}
+            rankChanges={rankChanges}
+          />
+
           <div className="game-footer">
             <div className="answer-status">
               <span className="status-dot" />
@@ -1229,7 +1562,7 @@ function App() {
           </div>
 
           <div className="leaderboard">
-            {questionResults.players.map((player, index) => (
+            {(questionResults.players || leaderboard).map((player, index) => (
               <div
                 key={player.id}
                 className={`leaderboard-row ${
@@ -1252,7 +1585,24 @@ function App() {
             ))}
           </div>
 
-          <div className="next-question">Next question in 3 seconds...</div>
+          {(questionResults.teams || teamLeaderboard || []).length > 0 && (
+            <div className="results-teams">
+              <div className="leaderboard-heading">
+                <h3>Team Score</h3>
+              </div>
+
+              {(questionResults.teams || teamLeaderboard).map((team) => (
+                <div className="team-score-row" key={team.id}>
+                  <span>#{team.rank} {team.name}</span>
+                  <strong>{team.score}</strong>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="next-question">
+            Next question in 3 seconds...
+          </div>
         </Card>
       </Shell>
     );
@@ -1285,8 +1635,10 @@ function App() {
             </p>
           </div>
 
+          <div className="final-section-title">INDIVIDUAL RESULTS</div>
+
           <div className="final-leaderboard">
-            {finalResults.leaderboard.map((player, index) => (
+            {(finalResults.leaderboard || []).map((player, index) => (
               <div
                 key={player.id}
                 className={`final-row ${
@@ -1299,9 +1651,8 @@ function App() {
 
                 <div className="final-name">
                   <strong>{player.name}</strong>
-
+                  {player.teamName && <small>{player.teamName}</small>}
                   {player.id === me?.id && <span>YOU</span>}
-
                   {player.left && <span className="left-tag">LEFT</span>}
                 </div>
 
@@ -1309,6 +1660,33 @@ function App() {
               </div>
             ))}
           </div>
+
+          {(finalResults.teams || []).length > 0 && (
+            <>
+              <div className="final-section-title">TEAM RESULTS</div>
+
+              <div className="final-leaderboard team-final-leaderboard">
+                {finalResults.teams.map((team, index) => (
+                  <div className="final-row" key={team.id}>
+                    <div className="final-rank">
+                      {index === 0 ? "🏆" : index + 1}
+                    </div>
+
+                    <div className="final-name">
+                      <strong>{team.name}</strong>
+                      <small>
+                        {team.players
+                          .map((player) => player.name)
+                          .join(" • ")}
+                      </small>
+                    </div>
+
+                    <strong>{team.score}</strong>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
 
           {isHost ? (
             <button onClick={playAgain}>Play Again ↻</button>
@@ -1335,6 +1713,74 @@ function App() {
 
 
 // --------------------------------------------------
+// LIVE LEADERBOARD
+// --------------------------------------------------
+
+function LiveLeaderboard({ players, teams, me, rankChanges }) {
+  if (!players?.length) {
+    return null;
+  }
+
+  return (
+    <div className="live-leaderboard">
+      <div className="live-leaderboard-header">
+        <div>
+          <span className="eyebrow">LIVE BATTLE</span>
+          <h3>Leaderboard</h3>
+        </div>
+
+        <span className="live-indicator">
+          <i /> LIVE
+        </span>
+      </div>
+
+      <div className="live-leaderboard-list">
+        {players.map((player) => {
+          const movement = rankChanges?.[player.id];
+
+          return (
+            <div
+              className={`live-rank-row ${
+                player.id === me?.id ? "current-player" : ""
+              } ${movement ? `rank-${movement}` : ""}`}
+              key={player.id}
+            >
+              <div className="live-rank">
+                <span>{player.rank}</span>
+                {movement && (
+                  <b>{movement === "up" ? "▲" : "▼"}</b>
+                )}
+              </div>
+
+              <div className="live-player-name">
+                <strong>{player.name}</strong>
+                <small>{player.teamName || "Player"}</small>
+              </div>
+
+              <strong className="live-score">{player.score}</strong>
+            </div>
+          );
+        })}
+      </div>
+
+      {teams?.length > 0 && (
+        <div className="live-team-summary">
+          {teams.map((team) => (
+            <div key={team.id} className="live-team-row">
+              <span>
+                #{team.rank} {team.name}
+              </span>
+              <strong>{team.score}</strong>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// --------------------------------------------------
 // UI COMPONENTS
 // --------------------------------------------------
 
@@ -1354,8 +1800,12 @@ function Shell({ children, hideFooter }) {
 }
 
 
-function Card({ children }) {
-  return <section className="card">{children}</section>;
+function Card({ children, className = "" }) {
+  return (
+    <section className={`card ${className}`.trim()}>
+      {children}
+    </section>
+  );
 }
 
 

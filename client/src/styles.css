@@ -2708,3 +2708,559 @@ footer span {
     letter-spacing: 2px;
   }
 }
+
+
+/* ============================================================
+   BATTLE MODE SELECTS
+============================================================ */
+
+.battle-select {
+  position: relative;
+  width: 100%;
+  margin-top: 8px;
+}
+
+.battle-select-trigger {
+  width: 100%;
+  min-height: 52px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 15px 16px;
+  border: 1px solid rgba(0, 255, 154, 0.22);
+  border-radius: 12px;
+  outline: none;
+  color: #ffffff;
+  background: linear-gradient(
+    135deg,
+    rgba(3, 30, 30, 0.96),
+    rgba(1, 17, 21, 0.96)
+  );
+  font: inherit;
+  font-weight: 750;
+  text-align: left;
+  cursor: pointer;
+}
+
+.battle-select-trigger:hover,
+.battle-select-trigger.open {
+  border-color: rgba(0, 255, 154, 0.55);
+  box-shadow:
+    0 0 0 2px rgba(0, 255, 154, 0.04),
+    0 0 18px rgba(0, 255, 154, 0.08);
+}
+
+.battle-select-menu {
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 0;
+  right: 0;
+  z-index: 60;
+  padding: 7px;
+  border: 1px solid rgba(0, 255, 154, 0.35);
+  border-radius: 14px;
+  background: linear-gradient(
+    145deg,
+    rgba(3, 24, 27, 0.99),
+    rgba(2, 12, 17, 0.99)
+  );
+  box-shadow:
+    0 18px 45px rgba(0, 0, 0, 0.55),
+    0 0 30px rgba(0, 255, 154, 0.10);
+  backdrop-filter: blur(14px);
+}
+
+.form-card {
+  width: min(720px, 100%);
+}
+
+
+/* ============================================================
+   BATTLE SETTINGS / WAITING ROOM
+============================================================ */
+
+.battle-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 22px;
+}
+
+.battle-info-box {
+  min-width: 0;
+  padding: 14px;
+  border: 1px solid rgba(0, 255, 154, 0.12);
+  border-radius: 13px;
+  background: rgba(0, 255, 154, 0.035);
+}
+
+.battle-info-box span {
+  display: block;
+  margin-bottom: 6px;
+  color: #617a72;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 1px;
+}
+
+.battle-info-box strong {
+  display: block;
+  overflow: hidden;
+  color: #ffffff;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.waiting-teams {
+  margin-top: 22px;
+}
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.team-card {
+  padding: 14px;
+  border: 1px solid rgba(0, 255, 154, 0.16);
+  border-radius: 14px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(0, 255, 154, 0.07),
+      rgba(0, 255, 154, 0.018)
+    );
+}
+
+.team-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.team-card-top strong {
+  color: #ffffff;
+}
+
+.team-card-top span {
+  color: #00ff9a;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.team-member-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.team-member-list span {
+  padding: 5px 8px;
+  border-radius: 8px;
+  color: #a9c2b9;
+  background: rgba(0, 255, 154, 0.055);
+  font-size: 11px;
+}
+
+
+/* ============================================================
+   BATTLE INTRO
+============================================================ */
+
+.battle-intro-screen {
+  width: min(1100px, 100%);
+  min-height: 75vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 40px 20px;
+  text-align: center;
+  animation: battleIntroIn 0.35s ease-out;
+}
+
+@keyframes battleIntroIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.battle-intro-kicker {
+  color: #00ff9a;
+  font-size: 13px;
+  font-weight: 950;
+  letter-spacing: 7px;
+  text-shadow: 0 0 18px rgba(0, 255, 154, 0.5);
+}
+
+.battle-intro-screen h1 {
+  margin: 12px 0 35px;
+  font-size: clamp(42px, 8vw, 88px);
+  font-weight: 950;
+  font-style: italic;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #ffffff;
+  text-shadow:
+    0 0 10px #00ff9a,
+    0 0 35px rgba(0, 255, 154, 0.65);
+}
+
+.battle-versus-layout {
+  width: min(1000px, 100%);
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 30px;
+}
+
+.battle-side {
+  min-height: 190px;
+  padding: 28px 22px;
+  border: 1px solid rgba(0, 255, 154, 0.35);
+  border-radius: 20px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(0, 255, 154, 0.10),
+      rgba(2, 15, 20, 0.92)
+    );
+  box-shadow: 0 0 35px rgba(0, 255, 154, 0.08);
+}
+
+.battle-side-left {
+  animation: battleLeftIn 0.65s ease-out;
+}
+
+.battle-side-right {
+  animation: battleRightIn 0.65s ease-out;
+}
+
+@keyframes battleLeftIn {
+  from { opacity: 0; transform: translateX(-70px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes battleRightIn {
+  from { opacity: 0; transform: translateX(70px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.battle-side-label {
+  display: block;
+  color: #00ff9a;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 3px;
+}
+
+.battle-side strong {
+  display: block;
+  margin-top: 12px;
+  color: #ffffff;
+  font-size: clamp(22px, 3vw, 36px);
+  text-shadow: 0 0 16px rgba(0, 255, 154, 0.25);
+}
+
+.battle-side-players {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 16px;
+}
+
+.battle-side-players span {
+  padding: 6px 9px;
+  border-radius: 8px;
+  color: #a9cfc1;
+  background: rgba(0, 255, 154, 0.06);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.battle-vs {
+  font-size: clamp(42px, 7vw, 78px);
+  font-weight: 1000;
+  font-style: italic;
+  color: #ffffff;
+  text-shadow:
+    0 0 10px #00ff9a,
+    0 0 30px #00ff9a;
+  animation: versusPulse 0.75s ease-in-out infinite alternate;
+}
+
+@keyframes versusPulse {
+  from { transform: scale(0.95); opacity: 0.75; }
+  to { transform: scale(1.08); opacity: 1; }
+}
+
+.battle-intro-meta {
+  margin-top: 28px;
+  color: #718a82;
+  font-size: 12px;
+  font-weight: 850;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+}
+
+.battle-intro-meta span {
+  margin: 0 8px;
+  color: #00ff9a;
+}
+
+
+/* ============================================================
+   LIVE LEADERBOARD
+============================================================ */
+
+.live-leaderboard {
+  margin-top: 24px;
+  padding: 16px;
+  border: 1px solid rgba(0, 255, 154, 0.18);
+  border-radius: 17px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(0, 255, 154, 0.055),
+      rgba(0, 0, 0, 0.14)
+    );
+}
+
+.live-leaderboard-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  margin-bottom: 11px;
+}
+
+.live-leaderboard-header h3 {
+  margin: 4px 0 0;
+  color: #ffffff;
+}
+
+.live-indicator {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #00ff9a;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 1px;
+}
+
+.live-indicator i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #00ff9a;
+  box-shadow: 0 0 10px #00ff9a;
+  animation: liveBlink 0.9s ease-in-out infinite alternate;
+}
+
+@keyframes liveBlink {
+  from { opacity: 0.35; }
+  to { opacity: 1; }
+}
+
+.live-leaderboard-list {
+  display: grid;
+  gap: 6px;
+}
+
+.live-rank-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 10px;
+  border: 1px solid rgba(0, 255, 154, 0.07);
+  border-radius: 11px;
+  background: rgba(0, 255, 154, 0.02);
+  transition:
+    transform 0.45s ease,
+    border-color 0.3s ease,
+    background 0.3s ease;
+}
+
+.live-rank-row.rank-up {
+  animation: rankUpFlash 0.8s ease;
+}
+
+.live-rank-row.rank-down {
+  animation: rankDownFlash 0.8s ease;
+}
+
+@keyframes rankUpFlash {
+  0% { transform: translateX(-12px) scale(0.98); }
+  50% { transform: translateX(5px) scale(1.015); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+@keyframes rankDownFlash {
+  0% { transform: translateX(12px) scale(0.98); }
+  50% { transform: translateX(-5px) scale(1.015); }
+  100% { transform: translateX(0) scale(1); }
+}
+
+.live-rank-row.current-player {
+  border-color: rgba(0, 255, 154, 0.38);
+  background: rgba(0, 255, 154, 0.065);
+}
+
+.live-rank {
+  width: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  color: #00ff9a;
+  font-weight: 950;
+}
+
+.live-rank b {
+  font-size: 9px;
+}
+
+.live-player-name {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.live-player-name strong {
+  overflow: hidden;
+  color: #ffffff;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.live-player-name small {
+  margin-top: 2px;
+  color: #5f7770;
+  font-size: 10px;
+}
+
+.live-score {
+  min-width: 55px;
+  text-align: right;
+  color: #ffffff;
+  font-size: 15px;
+}
+
+.live-team-summary {
+  display: grid;
+  gap: 5px;
+  margin-top: 12px;
+  padding-top: 11px;
+  border-top: 1px solid rgba(0, 255, 154, 0.10);
+}
+
+.live-team-row,
+.team-score-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  color: #9eb7ae;
+  background: rgba(0, 255, 154, 0.025);
+  font-size: 12px;
+}
+
+.live-team-row strong,
+.team-score-row strong {
+  color: #00ff9a;
+}
+
+
+/* ============================================================
+   RESULTS / TEAM RESULTS
+============================================================ */
+
+.results-teams {
+  margin-top: 20px;
+}
+
+.final-section-title {
+  margin: 18px 0 10px;
+  color: #00ff9a;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 2px;
+}
+
+.final-name {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.final-name small {
+  width: 100%;
+  color: #5f7770;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.team-final-leaderboard {
+  margin-bottom: 20px;
+}
+
+
+/* ============================================================
+   RESPONSIVE BATTLE UI
+============================================================ */
+
+@media (max-width: 700px) {
+  .battle-settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .team-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .battle-versus-layout {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .battle-side {
+    min-height: auto;
+    padding: 20px 15px;
+  }
+
+  .battle-vs {
+    font-size: 42px;
+  }
+
+  .battle-side-right {
+    order: 3;
+  }
+
+  .battle-vs {
+    order: 2;
+  }
+
+  .battle-side-left {
+    order: 1;
+  }
+
+  .battle-intro-screen h1 {
+    margin-bottom: 22px;
+  }
+}
