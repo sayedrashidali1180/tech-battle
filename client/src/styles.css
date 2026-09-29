@@ -751,6 +751,72 @@ input::placeholder {
 
 
 /* ============================================================
+   QUIZ TYPE DROPDOWN
+============================================================ */
+
+label select {
+  width: 100%;
+  margin-top: 8px;
+  padding: 15px 45px 15px 15px;
+
+  border: 1px solid rgba(0, 255, 154, 0.25);
+  border-radius: 12px;
+
+  outline: none;
+
+  color: #ffffff;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(0, 35, 32, 0.95),
+      rgba(0, 20, 22, 0.95)
+    );
+
+  font: inherit;
+  font-weight: 700;
+
+  cursor: pointer;
+
+  appearance: none;
+  -webkit-appearance: none;
+
+  background-image:
+    linear-gradient(45deg, transparent 50%, #00ff9a 50%),
+    linear-gradient(135deg, #00ff9a 50%, transparent 50%);
+  background-position:
+    calc(100% - 20px) 50%,
+    calc(100% - 14px) 50%;
+  background-size:
+    6px 6px,
+    6px 6px;
+  background-repeat: no-repeat;
+
+  transition: 0.2s ease;
+}
+
+label select:hover {
+  border-color: rgba(0, 255, 154, 0.55);
+
+  box-shadow:
+    0 0 18px rgba(0, 255, 154, 0.08);
+}
+
+label select:focus {
+  border-color: #00ff9a;
+
+  box-shadow:
+    0 0 0 3px rgba(0, 255, 154, 0.08),
+    0 0 18px rgba(0, 255, 154, 0.10);
+}
+
+label select option {
+  color: #ffffff;
+  background: #031018;
+  font-weight: 700;
+}
+
+
+/* ============================================================
    ERROR
 ============================================================ */
 
