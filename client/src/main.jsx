@@ -74,8 +74,8 @@ const MATCH_SIZE_LABELS = {
 };
 
 const BATTLE_FORMATS = {
-  2: { "1v1": "🥊 1v1", ffa: "⚡ Free For All" },
-  4: { "2v2": "👥 2v2", "1v1v1v1": "⚔️ 1v1v1v1", ffa: "⚡ Free For All" },
+  2: { "1v1": "🥊 1v1" },
+  4: { "2v2": "👥 2v2", "1v1v1v1": "⚔️ 1v1v1v1" },
   6: { "3v3": "👥 3v3", "2v2v2": "⚔️ 2v2v2", ffa: "⚡ Free For All" },
   8: { "4v4": "👥 4v4", "2v2v2v2": "⚔️ 2v2v2v2", ffa: "⚡ Free For All" }
 };

@@ -107,13 +107,11 @@ const MATCH_SIZES = [2, 4, 6, 8];
 
 const BATTLE_FORMATS = {
   2: {
-    "1v1": { label: "1v1", teams: 2, teamSize: 1 },
-    ffa: { label: "Free For All", teams: 2, teamSize: 1, ffa: true }
+    "1v1": { label: "1v1", teams: 2, teamSize: 1 }
   },
   4: {
     "2v2": { label: "2v2", teams: 2, teamSize: 2 },
-    "1v1v1v1": { label: "1v1v1v1", teams: 4, teamSize: 1 },
-    ffa: { label: "Free For All", teams: 4, teamSize: 1, ffa: true }
+    "1v1v1v1": { label: "1v1v1v1", teams: 4, teamSize: 1 }
   },
   6: {
     "3v3": { label: "3v3", teams: 2, teamSize: 3 },
@@ -1995,7 +1993,6 @@ function publicRoomState(room) {
       label: config.label,
       teams: config.teams,
       teamSize: config.teamSize,
-      ffa: Boolean(config.ffa)
     })),
 
     requiredPlayers: room.matchSize,
