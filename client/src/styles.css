@@ -2381,9 +2381,9 @@ footer span {
 
 .home-content {
   position: absolute;
+  top: 380px;
   left: 0;
   right: 0;
-  bottom: 150px;
   z-index: 2;
   display: flex;
   flex-direction: column;
@@ -2392,7 +2392,7 @@ footer span {
 }
 
 .home-subtitle {
-  margin: 0 0 26px;
+  margin: 0 0 18px;
   color: #ffffff;
   font-size: clamp(12px, 1.8vw, 17px);
   font-weight: 900;
@@ -2406,7 +2406,7 @@ footer span {
 .tech-battle-home .button-stack {
   width: min(440px, 100%);
   margin: 0;
-  gap: 12px;
+  gap: 10px;
 }
 
 .tech-battle-home .button-stack button {
@@ -2421,7 +2421,7 @@ footer span {
     border-radius: 20px;
   }
 
-  .home-content {
+ .home-content {
     bottom: 100px;
     padding: 0 18px;
   }
