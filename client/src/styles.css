@@ -2420,8 +2420,8 @@ footer span {
 .server-online-indicator {
   position: absolute;
   z-index: 3;
-  left: 26.5%;
-  top: 32.2%;
+  left: 36.4%;
+  top: 41.8%;
   width: 25px;
   height: 25px;
   border-radius: 50%;
@@ -2432,6 +2432,7 @@ footer span {
     0 0 34px rgba(0, 255, 118, 0.75);
   animation: serverOnlineBlink 1.15s ease-in-out infinite;
   pointer-events: none;
+  will-change: transform, opacity, box-shadow;
 }
 
 @keyframes serverOnlineBlink {
@@ -2475,6 +2476,7 @@ footer span {
   text-align: center;
   text-transform: uppercase;
   text-shadow: 0 0 16px rgba(0, 255, 170, 0.50);
+  animation: none;
 }
 
 .tech-battle-home .button-stack {
@@ -2499,8 +2501,8 @@ footer span {
   }
 
   .server-online-indicator {
-    left: 25.8%;
-    top: 32.2%;
+    left: 36.2%;
+    top: 41.8%;
     width: 20px;
     height: 20px;
   }
