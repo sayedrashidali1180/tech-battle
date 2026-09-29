@@ -44,7 +44,18 @@ const CATEGORY_LABELS = {
   "web-development": "Web Development",
   networking: "Networking",
   cloud: "Cloud Computing",
-  cybersecurity: "Cybersecurity"
+  cybersecurity: "Cybersecurity",
+  aptitude: "Aptitude",
+  reasoning: "Logical Reasoning",
+  verbal: "Verbal Ability"
+};
+
+const QUIZ_TYPE_LABELS = {
+  aptitude: "🧮 Aptitude",
+  reasoning: "🧠 Logical Reasoning",
+  verbal: "📖 Verbal Ability",
+  technical: "💻 Technical",
+  mixed: "🎯 Mixed Placement"
 };
 
 const DIFFICULTY_LABELS = {
@@ -62,6 +73,8 @@ function App() {
   const [screen, setScreen] = useState("home");
 
   const [mode, setMode] = useState(null);
+
+  const [quizType, setQuizType] = useState("mixed");
 
   const [name, setName] = useState("");
 
@@ -434,7 +447,8 @@ function App() {
         event,
         {
           name: cleanedName,
-          roomCode: mode === "join" ? roomCode.toUpperCase() : undefined
+          roomCode: mode === "join" ? roomCode.toUpperCase() : undefined,
+          quizType: mode === "create" ? quizType : undefined
         },
         (response) => {
           setBusy(false);
@@ -820,6 +834,22 @@ function App() {
             />
           </label>
 
+          {mode === "create" && (
+            <label>
+              Quiz Type
+              <select
+                value={quizType}
+                onChange={(event) => setQuizType(event.target.value)}
+              >
+                <option value="aptitude">🧮 Aptitude</option>
+                <option value="reasoning">🧠 Logical Reasoning</option>
+                <option value="verbal">📖 Verbal Ability</option>
+                <option value="technical">💻 Technical</option>
+                <option value="mixed">🎯 Mixed Placement</option>
+              </select>
+            </label>
+          )}
+
           {mode === "join" && (
             <label>
               Room Code
@@ -908,6 +938,14 @@ function App() {
             >
               Copy Code
             </button>
+          </div>
+
+          <div className="room-code-box">
+            <span>QUIZ TYPE</span>
+
+            <strong>
+              {QUIZ_TYPE_LABELS[room?.quizType] || "🎯 Mixed Placement"}
+            </strong>
           </div>
 
           <p className="share-text">
