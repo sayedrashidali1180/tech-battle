@@ -638,13 +638,6 @@ function App() {
             backgroundImage: `url("${BACKGROUND_IMAGE_URL}")`
           }}
         >
-          <div className="home-overlay" />
-
-          <span
-            className="server-online-indicator"
-            aria-hidden="true"
-          />
-
           <div className="home-content">
             <div className="home-subtitle">
               REAL-TIME MULTIPLAYER TECHNOLOGY QUIZ

@@ -247,39 +247,6 @@ main {
 }
 
 
-/* Crown */
-
-.hero::before {
-  content: "👑";
-
-  display: block;
-
-  font-size:
-    clamp(
-      38px,
-      7vw,
-      65px
-    );
-
-  line-height:
-    0.8;
-
-  margin-bottom:
-    8px;
-
-  filter:
-    drop-shadow(
-      0 0 15px
-      rgba(
-        0,
-        255,
-        150,
-        0.5
-      )
-    );
-}
-
-
 /* Sword */
 
 .hero::after {
@@ -2383,152 +2350,84 @@ footer span {
 }
 
 /* ============================================================
-   TECH BATTLE HOME - SECOND SCREEN STYLE
-   Uses the existing server-served background only.
+   FINAL TECH BATTLE HOME
+   Frontend-only: use the existing backend artwork.
+   No extra crown and no extra blinking indicator.
 ============================================================ */
 
 .tech-battle-home {
- .tech-battle-home::after {
-  content: "";
-  position: absolute;
-  z-index: 2;
-  top: 0.2%;
-  left: 50%;
-  width: 88px;
-  height: 62px;
-  transform: translateX(-50%);
-  border-radius: 50%;
-  background: radial-gradient(ellipse at center, rgba(1, 6, 14, 0.98) 0%, rgba(1, 6, 14, 0.94) 58%, rgba(1, 6, 14, 0.20) 82%, rgba(1, 6, 14, 0) 100%);
-  pointer-events: none;
-}
-
   width: min(1100px, 100%);
-  min-height: 720px;
-  margin: auto;
+  min-height: 760px;
+  margin: 0 auto;
   padding: 0;
   overflow: hidden;
-  border: 1px solid rgba(0, 255, 154, 0.30);
+  position: relative;
+  border: 1px solid rgba(0, 255, 154, 0.35);
   border-radius: 28px;
-  background-color: #02060d;
+  background-color: #02070c;
   background-position: center;
   background-repeat: no-repeat;
   background-size: cover;
-  box-shadow:
-    0 0 55px rgba(0, 255, 154, 0.10),
-    inset 0 0 80px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 45px rgba(0, 255, 154, 0.10);
 }
 
-.home-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  background:
-    linear-gradient(
-      180deg,
-      rgba(0, 0, 0, 0.08) 0%,
-      rgba(0, 0, 0, 0.16) 38%,
-      rgba(0, 0, 0, 0.82) 100%
-    );
-}
-
-.server-online-indicator {
-  position: absolute;
-  z-index: 3;
-  left: 39.0%;
-  top: 41.8%;
-  width: 25px;
-  height: 25px;
-  border-radius: 50%;
-  background: #00ff76;
-  box-shadow:
-    0 0 8px #00ff76,
-    0 0 18px #00ff76,
-    0 0 34px rgba(0, 255, 118, 0.75);
-  animation: serverOnlineBlink 1.15s ease-in-out infinite;
-  pointer-events: none;
-  will-change: transform, opacity, box-shadow;
-}
-
-@keyframes serverOnlineBlink {
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-    box-shadow:
-      0 0 8px #00ff76,
-      0 0 18px #00ff76,
-      0 0 34px rgba(0, 255, 118, 0.75);
-  }
-
-  50% {
-    opacity: 0.35;
-    transform: scale(0.82);
-    box-shadow:
-      0 0 5px #00ff76,
-      0 0 10px #00ff76,
-      0 0 18px rgba(0, 255, 118, 0.35);
-  }
+.tech-battle-home::before,
+.tech-battle-home::after,
+.tech-battle-home .logo,
+.tech-battle-home .logo::after {
+  display: none !important;
+  content: none !important;
 }
 
 .home-content {
-  position: relative;
-  z-index: 4;
-  min-height: 720px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 70px;
+  z-index: 2;
   display: flex;
   flex-direction: column;
-  justify-content: flex-end;
   align-items: center;
-  padding: 40px 28px 185px;
+  padding: 0 28px;
 }
 
 .home-subtitle {
-  margin-bottom: 28px;
+  margin: 0 0 26px;
   color: #ffffff;
-  font-size: clamp(12px, 2vw, 17px);
+  font-size: clamp(12px, 1.8vw, 17px);
   font-weight: 900;
-  letter-spacing: 4px;
+  letter-spacing: 3px;
+  line-height: 1.4;
   text-align: center;
   text-transform: uppercase;
-  text-shadow: 0 0 16px rgba(0, 255, 170, 0.50);
-  animation: none !important;
+  text-shadow: 0 0 14px rgba(0, 255, 154, 0.45);
 }
 
 .tech-battle-home .button-stack {
-  width: min(390px, 100%);
-  margin-top: 0;
+  width: min(440px, 100%);
+  margin: 0;
+  gap: 12px;
 }
 
 .tech-battle-home .button-stack button {
+  min-height: 52px;
   text-transform: uppercase;
   letter-spacing: 1.5px;
 }
 
 @media (max-width: 700px) {
-  .tech-battle-home::after {
-    width: 68px;
-    height: 50px;
-    top: 0.2%;
-  }
-
   .tech-battle-home {
-    min-height: 650px;
+    min-height: 680px;
     border-radius: 20px;
   }
 
   .home-content {
-    min-height: 650px;
-    padding: 30px 18px 145px;
-  }
-
-  .server-online-indicator {
-    left: 39.0%;
-    top: 41.8%;
-    width: 20px;
-    height: 20px;
+    bottom: 40px;
+    padding: 0 18px;
   }
 
   .home-subtitle {
-    margin-bottom: 22px;
+    margin-bottom: 20px;
     font-size: 11px;
     letter-spacing: 2px;
   }
