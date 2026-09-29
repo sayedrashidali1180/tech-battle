@@ -116,12 +116,12 @@ const BATTLE_FORMATS = {
   6: {
     "3v3": { label: "3v3", teams: 2, teamSize: 3 },
     "2v2v2": { label: "2v2v2", teams: 3, teamSize: 2 },
-    ffa: { label: "Free For All", teams: 6, teamSize: 1, ffa: true }
+    "1v1v1v1v1v1": { label: "1v1v1v1v1v1", teams: 6, teamSize: 1 }
   },
   8: {
     "4v4": { label: "4v4", teams: 2, teamSize: 4 },
     "2v2v2v2": { label: "2v2v2v2", teams: 4, teamSize: 2 },
-    ffa: { label: "Free For All", teams: 8, teamSize: 1, ffa: true }
+    "1v1v1v1v1v1v1v1": { label: "1v1v1v1v1v1v1v1", teams: 8, teamSize: 1 }
   }
 };
 
@@ -3813,11 +3813,9 @@ body {
 body::before {
   content: "";
   position: fixed;
-  inset: -3%;
+  inset: 0;
   z-index: 0;
-  background: url("/assets/tech-battle-bg.jpg") center / cover no-repeat;
-  filter: blur(24px) brightness(.48) saturate(1.08);
-  transform: scale(1.08);
+  background: url("/assets/tech-battle-bg.jpg") center center / cover no-repeat;
 }
 
 body::after {
@@ -3826,9 +3824,11 @@ body::after {
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  background:
-    radial-gradient(circle at 50% 25%, rgba(0,255,154,.12), transparent 34%),
-    linear-gradient(180deg, rgba(0,4,12,.10), rgba(0,4,12,.68));
+  background: linear-gradient(
+    180deg,
+    rgba(0,0,0,0) 0%,
+    rgba(0,0,0,.03) 100%
+  );
 }
 
 .stage {
@@ -3842,17 +3842,14 @@ body::after {
 }
 
 .dashboard {
-  width: min(78%, 980px);
+  width: min(72%, 1100px);
   margin: 0 auto;
-  padding: 2.6cqw 3.2cqw 2.8cqw;
-  border: 1px solid rgba(0,255,154,.58);
-  border-radius: 2.1cqw;
-  background: linear-gradient(145deg, rgba(3,16,23,.94), rgba(1,8,15,.91));
-  box-shadow:
-    inset 0 0 2.5cqw rgba(0,255,154,.035),
-    0 0 2.5cqw rgba(0,255,154,.10),
-    0 1.2cqw 4cqw rgba(0,0,0,.35);
-  backdrop-filter: blur(5px);
+  padding: 26.5cqw 0 1.2cqw;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 
 .brand {
@@ -4085,33 +4082,8 @@ body::after {
   }
 
   .dashboard {
-    width: 90%;
-    padding: 7vw 5vw 6vw;
-    border-radius: 5vw;
-  }
-
-  .brand {
-    font-size: 6vw;
-  }
-
-  .brand-icon {
-    font-size: 6vw;
-  }
-
-  .subtitle {
-    margin: 2vw 0 4vw;
-    font-size: 2.4vw;
-    line-height: 1.5;
-  }
-
-  .status-line {
-    font-size: 3.3vw;
-    margin-bottom: 3vw;
-  }
-
-  .status-dot {
-    width: 3vw;
-    height: 3vw;
+    width: 88%;
+    padding: 36vh 0 3vw;
   }
 
   .cards {
@@ -4209,20 +4181,6 @@ function renderDashboard() {
   <main class="stage" aria-label="Tech Battle server dashboard">
     <section class="dashboard">
 
-      <div class="brand">
-        <span class="brand-icon">⚔️</span>
-        <span>TECH BATTLE</span>
-      </div>
-
-      <div class="subtitle">
-        REAL-TIME MULTIPLAYER TECHNOLOGY QUIZ
-      </div>
-
-      <div class="status-line">
-        <span class="status-dot"></span>
-        SERVER ONLINE
-      </div>
-
       <section class="cards">
         <article class="card">
           <div class="icon">⚡</div>
@@ -4281,22 +4239,22 @@ function renderDashboard() {
       </section>
 
       <nav class="links" aria-label="Server links">
-        <a class="link" href="/health">
+        <a class="link" href="/dashboard/health">
           <strong>❤️ API STATUS</strong>
           <small>/health</small>
         </a>
 
-        <a class="link" href="/socket-info">
+        <a class="link" href="/dashboard/socket">
           <strong>📡 SOCKET.IO</strong>
           <small>Enabled</small>
         </a>
 
-        <a class="link" href="/api">
+        <a class="link" href="/dashboard/api">
           <strong>🎮 GAME API</strong>
           <small>/api</small>
         </a>
 
-        <a class="link" href="/docs">
+        <a class="link" href="/dashboard/docs">
           <strong>📖 DOCUMENTATION</strong>
           <small>/docs</small>
         </a>
@@ -4314,6 +4272,284 @@ function renderDashboard() {
 
 app.get("/", (req, res) => {
   res.send(renderDashboard());
+});
+
+/* ============================================================
+   DASHBOARD DETAIL PAGES
+   These are browser-friendly views. The JSON API routes remain
+   available at /health, /socket-info, /api and /docs.
+============================================================ */
+
+const DETAIL_CSS = `
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+}
+
+body {
+  min-height: 100vh;
+  background: #02050d;
+  color: #ffffff;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: url("/assets/tech-battle-bg.jpg") center center / cover no-repeat;
+}
+
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: rgba(0, 4, 12, .12);
+  pointer-events: none;
+}
+
+.detail-page {
+  position: relative;
+  z-index: 1;
+  width: min(1000px, 88vw);
+  margin: 0 auto;
+  padding: 8vh 0 8vh;
+}
+
+.detail-card {
+  border: 1px solid rgba(0,255,154,.55);
+  border-radius: 24px;
+  background: rgba(2, 10, 17, .88);
+  box-shadow:
+    0 0 35px rgba(0,255,154,.12),
+    inset 0 0 30px rgba(0,255,154,.025);
+  padding: 34px;
+  backdrop-filter: blur(7px);
+}
+
+.detail-title {
+  color: #00ff9a;
+  font-size: clamp(24px, 3vw, 42px);
+  font-weight: 950;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.detail-subtitle {
+  color: #c9eee4;
+  margin: 10px 0 28px;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+
+.detail-item {
+  padding: 18px;
+  border: 1px solid rgba(0,255,154,.28);
+  border-radius: 14px;
+  background: rgba(4, 23, 30, .86);
+}
+
+.detail-label {
+  color: #8fa9a3;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  font-weight: 800;
+}
+
+.detail-value {
+  color: #ffffff;
+  margin-top: 7px;
+  font-size: 18px;
+  font-weight: 900;
+}
+
+.detail-value.green {
+  color: #00ff9a;
+  text-shadow: 0 0 12px rgba(0,255,154,.35);
+}
+
+.back {
+  display: inline-flex;
+  margin-top: 24px;
+  padding: 12px 18px;
+  border: 1px solid rgba(0,255,154,.42);
+  border-radius: 11px;
+  color: #00ff9a;
+  text-decoration: none;
+  font-weight: 850;
+  background: rgba(0,255,154,.035);
+}
+
+.back:hover {
+  border-color: #00ff9a;
+  background: rgba(0,255,154,.09);
+}
+
+pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #dffcf2;
+  line-height: 1.65;
+  font-size: 14px;
+}
+
+@media (max-width: 650px) {
+  .detail-page {
+    width: 92vw;
+    padding: 4vh 0;
+  }
+
+  .detail-card {
+    padding: 22px;
+    border-radius: 18px;
+  }
+
+  .detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+`;
+
+function renderDetailPage(title, subtitle, content) {
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tech Battle • ${escHtml(title)}</title>
+<style>${DETAIL_CSS}</style>
+</head>
+<body>
+  <main class="detail-page">
+    <section class="detail-card">
+      <h1 class="detail-title">⚔️ ${escHtml(title)}</h1>
+      <p class="detail-subtitle">${escHtml(subtitle)}</p>
+      ${content}
+      <a class="back" href="/">← Back to Tech Battle Server</a>
+    </section>
+  </main>
+</body>
+</html>`;
+}
+
+app.get("/dashboard/health", (req, res) => {
+  const uptime = Math.floor(process.uptime());
+
+  res.send(
+    renderDetailPage(
+      "API Status",
+      "Live server health information",
+      `<div class="detail-grid">
+        <div class="detail-item"><div class="detail-label">Status</div><div class="detail-value green">ONLINE</div></div>
+        <div class="detail-item"><div class="detail-label">Active Rooms</div><div class="detail-value">${rooms.size}</div></div>
+        <div class="detail-item"><div class="detail-label">Uptime</div><div class="detail-value">${uptime}s</div></div>
+        <div class="detail-item"><div class="detail-label">Health</div><div class="detail-value green">100%</div></div>
+      </div>`
+    )
+  );
+});
+
+app.get("/dashboard/socket", (req, res) => {
+  res.send(
+    renderDetailPage(
+      "Socket.IO",
+      "Real-time multiplayer transport",
+      `<div class="detail-grid">
+        <div class="detail-item"><div class="detail-label">Status</div><div class="detail-value green">ENABLED</div></div>
+        <div class="detail-item"><div class="detail-label">Transport</div><div class="detail-value">WebSocket / Polling</div></div>
+        <div class="detail-item"><div class="detail-label">Minimum Players</div><div class="detail-value">${MIN_PLAYERS}</div></div>
+        <div class="detail-item"><div class="detail-label">Maximum Players</div><div class="detail-value">${MAX_PLAYERS}</div></div>
+      </div>`
+    )
+  );
+});
+
+app.get("/dashboard/api", (req, res) => {
+  const apiData = {
+    service: "Tech Battle Server",
+    status: "online",
+    multiplayer: true,
+    socketIO: true,
+    players: { minimum: MIN_PLAYERS, maximum: MAX_PLAYERS },
+    questions: 10,
+    questionTime: QUESTION_TIME,
+    matchSizes: MATCH_SIZES,
+    battleFormats: Object.fromEntries(
+      MATCH_SIZES.map((size) => [
+        size,
+        Object.entries(BATTLE_FORMATS[size]).map(([id, config]) => ({
+          id,
+          ...config
+        }))
+      ])
+    ),
+    quizTypes: Object.entries(QUIZ_TYPES).map(([id, config]) => ({
+      id,
+      label: config.label,
+      categories: config.categories
+    }))
+  };
+
+  res.send(
+    renderDetailPage(
+      "Game API",
+      "Available multiplayer game configuration",
+      `<div class="detail-item"><pre>${escHtml(JSON.stringify(apiData, null, 2))}</pre></div>`
+    )
+  );
+});
+
+app.get("/dashboard/docs", (req, res) => {
+  const docs = {
+    transport: "Socket.IO",
+    limits: {
+      minPlayers: MIN_PLAYERS,
+      maxPlayers: MAX_PLAYERS,
+      questionTimeMs: QUESTION_TIME,
+      questionsPerGame: 10
+    },
+    clientEvents: [
+      "time_sync",
+      "create_room",
+      "join_room",
+      "reconnect_player",
+      "start_game",
+      "use_powerup",
+      "submit_answer",
+      "play_again",
+      "leave_game"
+    ],
+    serverEvents: [
+      "room_state",
+      "countdown",
+      "question",
+      "answer_count",
+      "question_results",
+      "game_finished",
+      "leaderboard_update",
+      "battle_intro"
+    ]
+  };
+
+  res.send(
+    renderDetailPage(
+      "Documentation",
+      "Tech Battle server events and limits",
+      `<div class="detail-item"><pre>${escHtml(JSON.stringify(docs, null, 2))}</pre></div>`
+    )
+  );
 });
 
 /* ============================================================
