@@ -3837,14 +3837,14 @@ body::after {
   width: min(100vw, 150vh);
   min-height: 100vh;
   margin: 0 auto;
-  padding: 7vh 0 5vh;
+  padding: 4vh 0 3vh;
   container-type: inline-size;
 }
 
 .dashboard {
-  width: min(72%, 1100px);
+  width: min(60%, 980px);
   margin: 0 auto;
-  padding: 26.5cqw 0 1.2cqw;
+  padding: 18cqw 0 1cqw;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -4083,7 +4083,7 @@ body::after {
 
   .dashboard {
     width: 88%;
-    padding: 36vh 0 3vw;
+    padding: 31vh 0 3vw;
   }
 
   .cards {

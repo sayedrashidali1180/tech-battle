@@ -2753,6 +2753,10 @@ footer span {
 }
 
 .battle-select-menu {
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+
   position: absolute;
   top: calc(100% + 7px);
   left: 0;
@@ -2770,6 +2774,13 @@ footer span {
     0 18px 45px rgba(0, 0, 0, 0.55),
     0 0 30px rgba(0, 255, 154, 0.10);
   backdrop-filter: blur(14px);
+}
+
+.battle-select .quiz-type-option span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .form-card {
