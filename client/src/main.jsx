@@ -62,7 +62,8 @@ const QUIZ_TYPE_LABELS = {
 const DIFFICULTY_LABELS = {
   easy: "Easy",
   medium: "Medium",
-  hard: "Hard"
+  hard: "Hard",
+  mixed: "Mixed Difficulty"
 };
 
 
@@ -105,7 +106,10 @@ function App() {
 
   const [quizType, setQuizType] = useState("mixed");
 
+  const [difficulty, setDifficulty] = useState("mixed");
+
   const [quizTypeOpen, setQuizTypeOpen] = useState(false);
+  const [difficultyOpen, setDifficultyOpen] = useState(false);
 
   const [matchSize, setMatchSize] = useState(2);
 
@@ -468,6 +472,9 @@ function App() {
       if (!event.target.closest(".quiz-type-select")) {
         setQuizTypeOpen(false);
       }
+      if (!event.target.closest(".difficulty-select")) {
+        setDifficultyOpen(false);
+      }
       if (!event.target.closest(".battle-select")) {
         setMatchSizeOpen(false);
         setBattleFormatOpen(false);
@@ -477,6 +484,7 @@ function App() {
     const handleKeyDown = (event) => {
       if (event.key === "Escape") {
         setQuizTypeOpen(false);
+        setDifficultyOpen(false);
       }
     };
 
@@ -591,6 +599,7 @@ function App() {
           name: cleanedName,
           roomCode: mode === "join" ? roomCode.toUpperCase() : undefined,
           quizType: mode === "create" ? quizType : undefined,
+          difficulty: mode === "create" ? difficulty : undefined,
           matchSize: mode === "create" ? matchSize : undefined,
           battleFormat: mode === "create" ? battleFormat : undefined
         },
@@ -1029,6 +1038,70 @@ function App() {
               </label>
 
               <label>
+                Difficulty
+                <div className="difficulty-select">
+                  <button
+                    type="button"
+                    className={`quiz-type-trigger ${
+                      difficultyOpen ? "open" : ""
+                    }`}
+                    aria-haspopup="listbox"
+                    aria-expanded={difficultyOpen}
+                    onClick={() => {
+                      setDifficultyOpen((open) => !open);
+                      setQuizTypeOpen(false);
+                    }}
+                  >
+                    <span>
+                      {difficulty === "mixed"
+                        ? "🎲 Mixed Difficulty"
+                        : difficulty === "easy"
+                        ? "🟢 Easy"
+                        : difficulty === "medium"
+                        ? "🟡 Medium"
+                        : "🔴 Hard"}
+                    </span>
+                    <span
+                      className={`quiz-type-arrow ${
+                        difficultyOpen ? "up" : ""
+                      }`}
+                      aria-hidden="true"
+                    />
+                  </button>
+
+                  {difficultyOpen && (
+                    <div className="quiz-type-menu" role="listbox">
+                      {[
+                        ["mixed", "🎲 Mixed Difficulty"],
+                        ["easy", "🟢 Easy"],
+                        ["medium", "🟡 Medium"],
+                        ["hard", "🔴 Hard"]
+                      ].map(([value, label]) => (
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={difficulty === value}
+                          key={value}
+                          className={`quiz-type-option ${
+                            difficulty === value ? "selected" : ""
+                          }`}
+                          onClick={() => {
+                            setDifficulty(value);
+                            setDifficultyOpen(false);
+                          }}
+                        >
+                          <span>{label}</span>
+                          {difficulty === value && (
+                            <span className="quiz-type-check">✓</span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </label>
+
+              <label>
                 Match Size
                 <div className="battle-select">
                   <button
@@ -1290,6 +1363,15 @@ function App() {
             </div>
 
             <div className="battle-info-box">
+              <span>DIFFICULTY</span>
+              <strong>
+                {room?.difficultyLabel ||
+                  DIFFICULTY_LABELS[room?.difficulty] ||
+                  "Mixed Difficulty"}
+              </strong>
+            </div>
+
+            <div className="battle-info-box">
               <span>MATCH SIZE</span>
               <strong>{requiredPlayers} PLAYERS</strong>
             </div>
@@ -1441,7 +1523,7 @@ function App() {
 
               <div className="question-meta">
                 <span className="category-tag">
-                  {CATEGORY_LABELS[question.category]}
+                  {CATEGORY_LABELS[question.category] || question.category}
                 </span>
 
                 <span className={`difficulty ${question.difficulty}`}>
@@ -1631,6 +1713,9 @@ function App() {
 
     const isHost = room && me && room.hostPlayerId === me.id;
 
+    const myPerformance =
+      finalResults.performanceByPlayer?.[me?.id] || null;
+
     return (
       <Shell>
         <Card>
@@ -1697,6 +1782,67 @@ function App() {
                     <strong>{team.score}</strong>
                   </div>
                 ))}
+              </div>
+            </>
+          )}
+
+          {myPerformance && (
+            <>
+              <div className="final-section-title">
+                YOUR PLACEMENT PERFORMANCE
+              </div>
+
+              <div className="performance-overview">
+                <div className="performance-stat">
+                  <span>ACCURACY</span>
+                  <strong>{myPerformance.accuracy}%</strong>
+                </div>
+
+                <div className="performance-stat">
+                  <span>CORRECT</span>
+                  <strong>
+                    {myPerformance.correct}/{myPerformance.answered}
+                  </strong>
+                </div>
+
+                <div className="performance-stat">
+                  <span>AVG. TIME</span>
+                  <strong>
+                    {myPerformance.averageResponseTime}s
+                  </strong>
+                </div>
+              </div>
+
+              <div className="performance-grid">
+                <div className="performance-panel">
+                  <div className="performance-panel-title">
+                    BY CATEGORY
+                  </div>
+
+                  {myPerformance.byCategory.map((item) => (
+                    <div className="performance-row" key={item.key}>
+                      <span>
+                        {CATEGORY_LABELS[item.key] || item.key}
+                      </span>
+                      <strong>{item.accuracy}%</strong>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="performance-panel">
+                  <div className="performance-panel-title">
+                    BY DIFFICULTY
+                  </div>
+
+                  {myPerformance.byDifficulty.map((item) => (
+                    <div className="performance-row" key={item.key}>
+                      <span>
+                        {DIFFICULTY_LABELS[item.key] || item.key}
+                      </span>
+                      <strong>{item.accuracy}%</strong>
+                    </div>
+                  ))}
+                </div>
               </div>
             </>
           )}

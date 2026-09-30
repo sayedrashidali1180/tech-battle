@@ -119,6 +119,21 @@ function normalizeQuizType(value) {
   return QUIZ_TYPES[type] ? type : "mixed";
 }
 
+const DIFFICULTIES = {
+  easy: "Easy",
+  medium: "Medium",
+  hard: "Hard",
+  mixed: "Mixed Difficulty"
+};
+
+function normalizeDifficulty(value) {
+  const difficulty = String(value || "")
+    .trim()
+    .toLowerCase();
+
+  return DIFFICULTIES[difficulty] ? difficulty : "mixed";
+}
+
 /* ============================================================
    MATCH SIZES / BATTLE FORMATS / TEAMS
 ============================================================ */
@@ -1398,6 +1413,69 @@ const QUESTION_BANK = [
     2
   ),
 
+  q(
+    "aptitude-hard-4",
+    "aptitude",
+    "hard",
+    "If 3x + 7 = 31, what is x?",
+    ["6", "7", "8", "9"],
+    1
+  ),
+
+  q(
+    "aptitude-hard-5",
+    "aptitude",
+    "hard",
+    "A shop gives two successive discounts of 10% and 20% on an item marked ₹1,000. What is the final price?",
+    ["₹700", "₹720", "₹750", "₹800"],
+    1
+  ),
+
+  q(
+    "aptitude-hard-6",
+    "aptitude",
+    "hard",
+    "A can complete a job in 12 days and B in 18 days. Working together, how many days do they take?",
+    ["6.2", "7.2", "8", "9"],
+    1
+  ),
+
+  q(
+    "aptitude-hard-7",
+    "aptitude",
+    "hard",
+    "A number is increased by 25% and then decreased by 20%. What is the net change?",
+    ["5% increase", "No change", "5% decrease", "10% decrease"],
+    1
+  ),
+
+  q(
+    "aptitude-hard-8",
+    "aptitude",
+    "hard",
+    "If the ratio of two numbers is 5:7 and their sum is 96, what is the smaller number?",
+    ["30", "35", "40", "42"],
+    2
+  ),
+
+  q(
+    "aptitude-hard-9",
+    "aptitude",
+    "hard",
+    "A car travels half of a journey at 40 km/h and the other half at 60 km/h. What is its average speed?",
+    ["45 km/h", "48 km/h", "50 km/h", "52 km/h"],
+    1
+  ),
+
+  q(
+    "aptitude-hard-10",
+    "aptitude",
+    "hard",
+    "A sum of ₹2,000 earns simple interest of ₹360 in 3 years. What is the annual rate?",
+    ["4%", "5%", "6%", "8%"],
+    2
+  ),
+
   /* ==========================================================
      LOGICAL REASONING
   ========================================================== */
@@ -1506,6 +1584,69 @@ const QUESTION_BANK = [
     1
   ),
 
+  q(
+    "reasoning-hard-4",
+    "reasoning",
+    "hard",
+    "Find the next number: 1, 4, 9, 16, ?",
+    ["20", "24", "25", "27"],
+    2
+  ),
+
+  q(
+    "reasoning-hard-5",
+    "reasoning",
+    "hard",
+    "A is taller than B. C is taller than A. D is shorter than B. Who is the tallest?",
+    ["A", "B", "C", "D"],
+    2
+  ),
+
+  q(
+    "reasoning-hard-6",
+    "reasoning",
+    "hard",
+    "A person walks 5 km north, then 3 km east, then 5 km south. How far is the person from the starting point?",
+    ["2 km", "3 km", "5 km", "8 km"],
+    1
+  ),
+
+  q(
+    "reasoning-hard-7",
+    "reasoning",
+    "hard",
+    "Find the odd one out.",
+    ["Triangle", "Square", "Circle", "Rectangle"],
+    2
+  ),
+
+  q(
+    "reasoning-hard-8",
+    "reasoning",
+    "hard",
+    "If all engineers are graduates and some graduates are writers, which statement is definitely true?",
+    ["All writers are engineers", "All engineers are graduates", "No graduates are writers", "Some engineers are writers"],
+    1
+  ),
+
+  q(
+    "reasoning-hard-9",
+    "reasoning",
+    "hard",
+    "A, B, C and D are ranked. A is ahead of B, C is behind D, and B is ahead of D. Who must be ahead of C?",
+    ["A only", "B only", "D only", "Both A and B"],
+    3
+  ),
+
+  q(
+    "reasoning-hard-10",
+    "reasoning",
+    "hard",
+    "Find the next letter: A, C, F, J, O, ?",
+    ["T", "U", "V", "W"],
+    1
+  ),
+
   /* ==========================================================
      VERBAL
   ========================================================== */
@@ -1610,6 +1751,69 @@ const QUESTION_BANK = [
       "Heavy"
     ],
     1
+  ),
+
+  q(
+    "verbal-hard-4",
+    "verbal",
+    "hard",
+    "Choose the closest meaning of pragmatic.",
+    ["Idealistic", "Practical", "Emotional", "Doubtful"],
+    1
+  ),
+
+  q(
+    "verbal-hard-5",
+    "verbal",
+    "hard",
+    "Choose the correct sentence.",
+    ["Each of the players have arrived.", "Each of the players has arrived.", "Each players has arrived.", "Each player have arrived."],
+    1
+  ),
+
+  q(
+    "verbal-hard-6",
+    "verbal",
+    "hard",
+    "Choose the antonym of obsolete.",
+    ["Outdated", "Ancient", "Current", "Unused"],
+    2
+  ),
+
+  q(
+    "verbal-hard-7",
+    "verbal",
+    "hard",
+    "Identify the word closest in meaning to concise.",
+    ["Brief", "Confusing", "Detailed", "Lengthy"],
+    0
+  ),
+
+  q(
+    "verbal-hard-8",
+    "verbal",
+    "hard",
+    "Choose the correct form: If I ___ you, I would accept the offer.",
+    ["am", "was", "were", "be"],
+    2
+  ),
+
+  q(
+    "verbal-hard-9",
+    "verbal",
+    "hard",
+    "Choose the best meaning of alleviate.",
+    ["Increase", "Reduce or relieve", "Ignore", "Predict"],
+    1
+  ),
+
+  q(
+    "verbal-hard-10",
+    "verbal",
+    "hard",
+    "Choose the correctly spelled word.",
+    ["Accomodation", "Acommodation", "Accommodation", "Accommadation"],
+    2
   ),
 
   q(
@@ -1725,132 +1929,148 @@ function generateRoomCode() {
    QUIZBASE QUESTION FETCH
 ============================================================ */
 
-async function fetchQuizBaseQuestions() {
+async function fetchQuizBaseQuestions(room) {
   if (!QUIZBASE_API_KEY) {
-    throw new Error(
-      "QUIZBASE_API_KEY is not configured."
-    );
+    throw new Error("QUIZBASE_API_KEY is not configured.");
   }
 
-  const url = new URL(
-    QUIZBASE_API_URL
-  );
+  const url = new URL(QUIZBASE_API_URL);
+  url.searchParams.set("amount", "50");
+  url.searchParams.set("lang", "en");
+  url.searchParams.set("quality", "high");
 
-  url.searchParams.set(
-    "amount",
-    String(QUIZBASE_QUESTION_COUNT)
-  );
+  if (room.difficulty !== "mixed") {
+    url.searchParams.set("difficulty", room.difficulty);
+  }
 
-  url.searchParams.set(
-    "lang",
-    "en"
-  );
-
-  url.searchParams.set(
-    "quality",
-    "high"
-  );
-
-  const response = await fetch(
-    url,
-    {
-      method: "GET",
-      headers: {
-        "X-API-Key":
-          QUIZBASE_API_KEY,
-        "Accept":
-          "application/json"
-      },
-      signal:
-        AbortSignal.timeout(10_000)
-    }
-  );
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      "X-API-Key": QUIZBASE_API_KEY,
+      "Accept": "application/json"
+    },
+    signal: AbortSignal.timeout(10_000)
+  });
 
   if (!response.ok) {
-    const body =
-      await response.text();
-
+    const body = await response.text();
     throw new Error(
       `QuizBase request failed (${response.status}): ${body.slice(0, 300)}`
     );
   }
 
-  const payload =
-    await response.json();
+  const payload = await response.json();
+  const questions = Array.isArray(payload?.data) ? payload.data : [];
 
-  const questions =
-    Array.isArray(payload?.data)
-      ? payload.data
+  if (!questions.length) {
+    throw new Error("QuizBase returned no questions.");
+  }
+
+  const normalized = questions.map((question) => {
+    const incorrectAnswers = Array.isArray(question?.incorrectAnswers)
+      ? question.incorrectAnswers
       : [];
 
-  if (
-    questions.length <
-    QUIZBASE_QUESTION_COUNT
-  ) {
+    const correctAnswer = question?.correctAnswer;
+
+    if (
+      !question?.id ||
+      !question?.text ||
+      !correctAnswer ||
+      incorrectAnswers.length < 3
+    ) {
+      return null;
+    }
+
+    const category = String(
+      question?.category?.slug ||
+      question?.category?.name ||
+      "quizbase"
+    )
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "-");
+
+    const difficulty = String(question?.difficulty || "medium")
+      .trim()
+      .toLowerCase();
+
+    const options = shuffle([
+      correctAnswer,
+      ...incorrectAnswers.slice(0, 3)
+    ]);
+
+    return {
+      id: `quizbase-${question.id}`,
+      category,
+      difficulty,
+      text: question.text,
+      options,
+      correctIndex: options.indexOf(correctAnswer),
+      source: "QuizBase",
+      attribution: question?.attribution || null
+    };
+  }).filter(Boolean);
+
+  const categoryMatches = (question) => {
+    if (room.quizType === "technical") {
+      return TECHNICAL_CATEGORIES.includes(question.category);
+    }
+
+    if (room.quizType === "mixed") {
+      return (
+        TECHNICAL_CATEGORIES.includes(question.category) ||
+        ["aptitude", "reasoning", "verbal"].includes(question.category)
+      );
+    }
+
+    return (QUIZ_TYPES[room.quizType]?.categories || [])
+      .includes(question.category);
+  };
+
+  const difficultyMatches = (question) =>
+    room.difficulty === "mixed" ||
+    question.difficulty === room.difficulty;
+
+  const filtered = normalized.filter(
+    (question) =>
+      categoryMatches(question) &&
+      difficultyMatches(question)
+  );
+
+  if (filtered.length < QUIZBASE_QUESTION_COUNT) {
     throw new Error(
-      `QuizBase returned only ${questions.length} questions.`
+      `QuizBase returned only ${filtered.length} matching questions for ${QUIZ_TYPES[room.quizType]?.label || "selected quiz"} / ${DIFFICULTIES[room.difficulty]}.`
     );
   }
 
-  return questions
-    .slice(
-      0,
-      QUIZBASE_QUESTION_COUNT
-    )
-    .map((question, index) => {
-      const incorrectAnswers =
-        Array.isArray(
-          question?.incorrectAnswers
-        )
-          ? question.incorrectAnswers
-          : [];
+  const selected = [];
+  const remaining = shuffle([...filtered]);
 
-      const correctAnswer =
-        question?.correctAnswer;
+  while (
+    selected.length < QUIZBASE_QUESTION_COUNT &&
+    remaining.length
+  ) {
+    const categoryCounts = new Map();
 
-      if (
-        !question?.id ||
-        !question?.text ||
-        !correctAnswer ||
-        incorrectAnswers.length < 3
-      ) {
-        throw new Error(
-          `QuizBase returned an invalid question at index ${index}.`
-        );
-      }
+    for (const question of selected) {
+      categoryCounts.set(
+        question.category,
+        (categoryCounts.get(question.category) || 0) + 1
+      );
+    }
 
-      const options =
-        shuffle([
-          correctAnswer,
-          ...incorrectAnswers.slice(0, 3)
-        ]);
+    remaining.sort(
+      (a, b) =>
+        (categoryCounts.get(a.category) || 0) -
+        (categoryCounts.get(b.category) || 0)
+    );
 
-      return {
-        id:
-          `quizbase-${question.id}`,
-        category:
-          question?.category?.slug ||
-          question?.category?.name ||
-          "quizbase",
-        difficulty:
-          question?.difficulty ||
-          "medium",
-        text:
-          question.text,
-        options,
-        correctIndex:
-          options.indexOf(
-            correctAnswer
-          ),
-        source:
-          "QuizBase",
-        attribution:
-          question?.attribution ||
-          null
-      };
-    });
+    selected.push(remaining.shift());
+  }
+
+  return shuffle(selected).map(shuffleQuestionOptions);
 }
-
 
 /* ============================================================
    QUESTION GENERATION
@@ -1886,6 +2106,10 @@ function shuffleQuestionOptions(question) {
 function createGameQuestions(
   roomOrQuizType = "mixed"
 ) {
+  const isRoom =
+    typeof roomOrQuizType === "object" &&
+    roomOrQuizType !== null;
+
   const quizType =
     typeof roomOrQuizType === "string"
       ? normalizeQuizType(
@@ -1895,24 +2119,34 @@ function createGameQuestions(
           roomOrQuizType?.quizType
         );
 
+  const selectedDifficulty =
+    isRoom
+      ? normalizeDifficulty(
+          roomOrQuizType?.difficulty
+        )
+      : "mixed";
+
   const config =
     QUIZ_TYPES[quizType] ||
     QUIZ_TYPES.mixed;
 
-  const difficulties = [
-    "easy",
-    "easy",
-    "easy",
-    "easy",
-
-    "medium",
-    "medium",
-    "medium",
-    "medium",
-
-    "hard",
-    "hard"
-  ];
+  const difficulties =
+    selectedDifficulty === "mixed"
+      ? [
+          "easy",
+          "easy",
+          "easy",
+          "easy",
+          "medium",
+          "medium",
+          "medium",
+          "medium",
+          "hard",
+          "hard"
+        ]
+      : Array(
+          QUIZBASE_QUESTION_COUNT
+        ).fill(selectedDifficulty);
 
   const usedQuestionIds =
     new Set();
@@ -1987,6 +2221,135 @@ function createGameQuestions(
 }
 
 /* ============================================================
+   PERFORMANCE TRACKING
+============================================================ */
+
+function createPerformanceStats() {
+  return {
+    answered: 0,
+    correct: 0,
+    wrong: 0,
+    responseTimeMs: 0,
+    byCategory: {},
+    byDifficulty: {}
+  };
+}
+
+function ensurePerformanceBucket(container, key) {
+  if (!container[key]) {
+    container[key] = {
+      answered: 0,
+      correct: 0,
+      wrong: 0,
+      responseTimeMs: 0
+    };
+  }
+
+  return container[key];
+}
+
+function recordPerformance(player, question, answer) {
+  if (!player.performance) {
+    player.performance = createPerformanceStats();
+  }
+
+  const correct = Boolean(
+    answer &&
+    answer.index === question.correctIndex
+  );
+
+  const responseTimeMs =
+    answer?.at && player.currentQuestionStartedAt
+      ? Math.max(
+          0,
+          Math.min(
+            QUESTION_TIME,
+            answer.at - player.currentQuestionStartedAt
+          )
+        )
+      : QUESTION_TIME;
+
+  const stats = player.performance;
+
+  stats.answered++;
+  stats.responseTimeMs += responseTimeMs;
+
+  if (correct) {
+    stats.correct++;
+  } else {
+    stats.wrong++;
+  }
+
+  const categoryBucket = ensurePerformanceBucket(
+    stats.byCategory,
+    question.category || "unknown"
+  );
+
+  categoryBucket.answered++;
+  categoryBucket.responseTimeMs += responseTimeMs;
+
+  if (correct) {
+    categoryBucket.correct++;
+  } else {
+    categoryBucket.wrong++;
+  }
+
+  const difficultyBucket = ensurePerformanceBucket(
+    stats.byDifficulty,
+    question.difficulty || "unknown"
+  );
+
+  difficultyBucket.answered++;
+  difficultyBucket.responseTimeMs += responseTimeMs;
+
+  if (correct) {
+    difficultyBucket.correct++;
+  } else {
+    difficultyBucket.wrong++;
+  }
+}
+
+function getPlayerPerformance(player) {
+  const stats = player?.performance || createPerformanceStats();
+
+  const accuracy = stats.answered
+    ? Math.round((stats.correct / stats.answered) * 100)
+    : 0;
+
+  const averageResponseTime = stats.answered
+    ? Number(
+        (stats.responseTimeMs / stats.answered / 1000).toFixed(1)
+      )
+    : 0;
+
+  const normalizeBuckets = (buckets) =>
+    Object.entries(buckets).map(([key, bucket]) => ({
+      key,
+      answered: bucket.answered,
+      correct: bucket.correct,
+      wrong: bucket.wrong,
+      accuracy: bucket.answered
+        ? Math.round((bucket.correct / bucket.answered) * 100)
+        : 0,
+      averageResponseTime: bucket.answered
+        ? Number(
+            (bucket.responseTimeMs / bucket.answered / 1000).toFixed(1)
+          )
+        : 0
+    }));
+
+  return {
+    answered: stats.answered,
+    correct: stats.correct,
+    wrong: stats.wrong,
+    accuracy,
+    averageResponseTime,
+    byCategory: normalizeBuckets(stats.byCategory),
+    byDifficulty: normalizeBuckets(stats.byDifficulty)
+  };
+}
+
+/* ============================================================
    PLAYER HELPERS
 ============================================================ */
 
@@ -2040,6 +2403,10 @@ function createPlayer(
     teamName: null,
 
     score: 0,
+
+    performance: createPerformanceStats(),
+
+    currentQuestionStartedAt: null,
 
     streak: 0,
 
@@ -2132,6 +2499,15 @@ function publicRoomState(room) {
         room.quizType
       ]?.label ||
       "Mixed Placement",
+
+    difficulty:
+      room.difficulty,
+
+    difficultyLabel:
+      DIFFICULTIES[
+        room.difficulty
+      ] ||
+      "Mixed Difficulty",
 
     matchSize: room.matchSize,
 
@@ -2308,6 +2684,8 @@ function sendCurrentState(
       matchSize: room.matchSize,
       battleFormat: room.battleFormat,
       battleFormatLabel: getBattleConfig(room)?.label || room.battleFormat,
+      difficulty: room.difficulty,
+      difficultyLabel: DIFFICULTIES[room.difficulty] || "Mixed Difficulty",
       teams: getTeamStandings(room),
       players: getPlayerLeaderboard(room),
       questionSource: room.questionSource
@@ -2413,7 +2791,7 @@ async function startCountdown(room) {
   try {
     // Exactly ONE QuizBase request for the whole match.
     questions =
-      await fetchQuizBaseQuestions();
+      await fetchQuizBaseQuestions(room);
 
     questionSource =
       "quizbase";
@@ -2458,6 +2836,8 @@ async function startCountdown(room) {
     matchSize: room.matchSize,
     battleFormat: room.battleFormat,
     battleFormatLabel: getBattleConfig(room)?.label || room.battleFormat,
+    difficulty: room.difficulty,
+    difficultyLabel: DIFFICULTIES[room.difficulty] || "Mixed Difficulty",
     teams: getTeamStandings(room),
     players: getPlayerLeaderboard(room),
     questionSource: room.questionSource
@@ -2693,7 +3073,10 @@ function finishGame(room) {
   const leaderboard = getPlayerLeaderboard(room).map((player) => ({
     ...player,
     total: player.score,
-    left: !room.players.get(player.id)?.active
+    left: !room.players.get(player.id)?.active,
+    performance: getPlayerPerformance(
+      room.players.get(player.id)
+    )
   }));
 
   const teams = getTeamStandings(room);
@@ -2730,7 +3113,15 @@ function finishGame(room) {
 
     battleFormat: room.battleFormat,
     battleFormatLabel: getBattleConfig(room)?.label || room.battleFormat,
-    matchSize: room.matchSize
+    matchSize: room.matchSize,
+    performanceByPlayer: Object.fromEntries(
+      [...room.players.values()]
+        .filter((player) => player.active)
+        .map((player) => [
+          player.id,
+          getPlayerPerformance(player)
+        ])
+    )
   };
 
   broadcastRoom(room);
@@ -2797,6 +3188,10 @@ function resetRoomForReplay(room) {
     }
 
     player.score = 0;
+
+    player.performance = createPerformanceStats();
+
+    player.currentQuestionStartedAt = null;
 
     player.streak = 0;
 
@@ -3042,6 +3437,11 @@ function createRoom(
 
     battleFormat,
 
+    difficulty:
+      normalizeDifficulty(
+        payload?.difficulty
+      ),
+
     hostPlayerId:
       player.id,
 
@@ -3120,6 +3520,14 @@ function createRoom(
       QUIZ_TYPES[
         quizType
       ].label,
+
+    difficulty:
+      room.difficulty,
+
+    difficultyLabel:
+      DIFFICULTIES[
+        room.difficulty
+      ],
 
     matchSize,
 
@@ -3259,6 +3667,8 @@ function joinRoom(
 
     quizType: room.quizType,
     quizTypeLabel: QUIZ_TYPES[room.quizType]?.label || "Mixed Placement",
+    difficulty: room.difficulty,
+    difficultyLabel: DIFFICULTIES[room.difficulty] || "Mixed Difficulty",
     matchSize: room.matchSize,
     battleFormat: room.battleFormat,
     battleFormatLabel: getBattleConfig(room)?.label || room.battleFormat
