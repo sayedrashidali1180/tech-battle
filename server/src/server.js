@@ -37,6 +37,26 @@ const ROOM_IDLE_CLEANUP = 10 * 60_000;
 const STREAK_BONUS_PER_STEP = 10;
 const STREAK_BONUS_CAP = 50;
 
+// ============================================================
+// QUIZBASE API
+// ============================================================
+//
+// One QuizBase API request is made when a match starts.
+// That request returns 10 questions which are then stored
+// in the room and shared by every player in that match.
+//
+// The API key MUST be stored in the server environment:
+// QUIZBASE_API_KEY
+// ============================================================
+
+const QUIZBASE_API_URL =
+  "https://quizbase.runriva.com/api/v1/questions/random";
+
+const QUIZBASE_API_KEY =
+  process.env.QUIZBASE_API_KEY || "";
+
+const QUIZBASE_QUESTION_COUNT = 10;
+
 const rooms = new Map();
 
 const ROOM_CHARACTERS =
@@ -1702,6 +1722,137 @@ function generateRoomCode() {
 }
 
 /* ============================================================
+   QUIZBASE QUESTION FETCH
+============================================================ */
+
+async function fetchQuizBaseQuestions() {
+  if (!QUIZBASE_API_KEY) {
+    throw new Error(
+      "QUIZBASE_API_KEY is not configured."
+    );
+  }
+
+  const url = new URL(
+    QUIZBASE_API_URL
+  );
+
+  url.searchParams.set(
+    "amount",
+    String(QUIZBASE_QUESTION_COUNT)
+  );
+
+  url.searchParams.set(
+    "lang",
+    "en"
+  );
+
+  url.searchParams.set(
+    "quality",
+    "high"
+  );
+
+  const response = await fetch(
+    url,
+    {
+      method: "GET",
+      headers: {
+        "X-API-Key":
+          QUIZBASE_API_KEY,
+        "Accept":
+          "application/json"
+      },
+      signal:
+        AbortSignal.timeout(10_000)
+    }
+  );
+
+  if (!response.ok) {
+    const body =
+      await response.text();
+
+    throw new Error(
+      `QuizBase request failed (${response.status}): ${body.slice(0, 300)}`
+    );
+  }
+
+  const payload =
+    await response.json();
+
+  const questions =
+    Array.isArray(payload?.data)
+      ? payload.data
+      : [];
+
+  if (
+    questions.length <
+    QUIZBASE_QUESTION_COUNT
+  ) {
+    throw new Error(
+      `QuizBase returned only ${questions.length} questions.`
+    );
+  }
+
+  return questions
+    .slice(
+      0,
+      QUIZBASE_QUESTION_COUNT
+    )
+    .map((question, index) => {
+      const incorrectAnswers =
+        Array.isArray(
+          question?.incorrectAnswers
+        )
+          ? question.incorrectAnswers
+          : [];
+
+      const correctAnswer =
+        question?.correctAnswer;
+
+      if (
+        !question?.id ||
+        !question?.text ||
+        !correctAnswer ||
+        incorrectAnswers.length < 3
+      ) {
+        throw new Error(
+          `QuizBase returned an invalid question at index ${index}.`
+        );
+      }
+
+      const options =
+        shuffle([
+          correctAnswer,
+          ...incorrectAnswers.slice(0, 3)
+        ]);
+
+      return {
+        id:
+          `quizbase-${question.id}`,
+        category:
+          question?.category?.slug ||
+          question?.category?.name ||
+          "quizbase",
+        difficulty:
+          question?.difficulty ||
+          "medium",
+        text:
+          question.text,
+        options,
+        correctIndex:
+          options.indexOf(
+            correctAnswer
+          ),
+        source:
+          "QuizBase",
+        attribution:
+          question?.attribution ||
+          null
+      };
+    });
+}
+
+
+/* ============================================================
    QUESTION GENERATION
 ============================================================ */
 
@@ -2007,6 +2158,9 @@ function publicRoomState(room) {
 
     leaderboard: getPlayerLeaderboard(room),
 
+    questionSource:
+      room.questionSource,
+
     currentQuestion:
       room.currentQuestionIndex,
 
@@ -2070,6 +2224,14 @@ function safeQuestion(
 
     difficulty:
       question.difficulty,
+
+    source:
+      question.source ||
+      "Tech Battle",
+
+    attribution:
+      question.attribution ||
+      null,
 
     text:
       question.text,
@@ -2147,7 +2309,8 @@ function sendCurrentState(
       battleFormat: room.battleFormat,
       battleFormatLabel: getBattleConfig(room)?.label || room.battleFormat,
       teams: getTeamStandings(room),
-      players: getPlayerLeaderboard(room)
+      players: getPlayerLeaderboard(room),
+      questionSource: room.questionSource
     });
 
     socket.emit(
@@ -2238,19 +2401,52 @@ function clearRoomTimers(room) {
    GAME FLOW
 ============================================================ */
 
-function startCountdown(room) {
+async function startCountdown(room) {
   clearRoomTimers(room);
 
   assignTeams(room);
+
+  let questions;
+  let questionSource =
+    "local-fallback";
+
+  try {
+    // Exactly ONE QuizBase request for the whole match.
+    questions =
+      await fetchQuizBaseQuestions();
+
+    questionSource =
+      "quizbase";
+
+    console.log(
+      `[QuizBase] Loaded ${questions.length} questions for room ${room.code}.`
+    );
+  } catch (error) {
+    // Keep the game playable if QuizBase is unavailable.
+    // The existing curated question bank is the fallback.
+    console.error(
+      `[QuizBase] ${error.message}`
+    );
+
+    questions =
+      createGameQuestions(room);
+
+    console.log(
+      `[QuizBase] Using local question bank for room ${room.code}.`
+    );
+  }
+
+  room.questions =
+    questions;
+
+  room.questionSource =
+    questionSource;
 
   room.status =
     "countdown";
 
   room.currentQuestionIndex =
     -1;
-
-  room.questions =
-    createGameQuestions(room);
 
   room.countdownEndsAt =
     Date.now() +
@@ -2263,7 +2459,8 @@ function startCountdown(room) {
     battleFormat: room.battleFormat,
     battleFormatLabel: getBattleConfig(room)?.label || room.battleFormat,
     teams: getTeamStandings(room),
-    players: getPlayerLeaderboard(room)
+    players: getPlayerLeaderboard(room),
+    questionSource: room.questionSource
   });
 
   emitLeaderboard(room);
@@ -2283,7 +2480,6 @@ function startCountdown(room) {
       COUNTDOWN_TIME
     );
 }
-
 function startQuestion(room) {
   clearRoomTimers(room);
 
@@ -2564,6 +2760,9 @@ function resetRoomForReplay(room) {
     -1;
 
   room.questions = [];
+
+  room.questionSource =
+    "local-fallback";
 
   room.answers =
     new Map();
@@ -2851,6 +3050,9 @@ function createRoom(
 
     questions:
       [],
+
+    questionSource:
+      "local-fallback",
 
     currentQuestionIndex:
       -1,
@@ -3242,7 +3444,7 @@ io.on(
 
     socket.on(
       "start_game",
-      (
+      async (
         payload,
         callback
       ) => {
@@ -3299,7 +3501,7 @@ io.on(
         }
 
         try {
-          startCountdown(
+          await startCountdown(
             room
           );
 
@@ -4338,5 +4540,12 @@ httpServer.listen(PORT, "0.0.0.0", () => {
   console.log(`Health: http://localhost:${PORT}/health`);
   console.log("Socket.IO multiplayer: ENABLED");
   console.log("Quiz types: ENABLED");
+  console.log(
+    `QuizBase API: ${
+      QUIZBASE_API_KEY
+        ? "CONFIGURED"
+        : "NOT CONFIGURED (local fallback only)"
+    }`
+  );
   console.log("======================================");
 });
