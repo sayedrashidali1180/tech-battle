@@ -3799,355 +3799,203 @@ const DASHBOARD_CSS = `
 
 html, body {
   margin: 0;
+  width: 100%;
   min-height: 100%;
 }
 
 body {
   min-height: 100vh;
   background: #02050d;
-  color: #ffffff;
+  color: #fff;
   overflow-x: hidden;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
+/* The uploaded Tech Battle artwork already contains the complete dashboard design.
+   Show the whole artwork instead of placing a second dashboard on top of it. */
 body::before {
   content: "";
   position: fixed;
   inset: 0;
   z-index: 0;
-  background: url("/assets/tech-battle-bg.jpg") center center / cover no-repeat;
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  background: linear-gradient(
-    180deg,
-    rgba(0,0,0,0) 0%,
-    rgba(0,0,0,.03) 100%
-  );
+  background: url("/assets/tech-battle-bg.jpg") center center / 100% 100% no-repeat;
 }
 
 .stage {
   position: relative;
-  z-index: 1;
-  width: min(100vw, 150vh);
+  z-index: 2;
+  width: 100vw;
   min-height: 100vh;
-  margin: 0 auto;
-  padding: 4vh 0 3vh;
-  container-type: inline-size;
+  height: 100vh;
 }
 
-.dashboard {
-  width: min(60%, 980px);
-  margin: 0 auto;
-  padding: 18cqw 0 1cqw;
-  border: 0;
-  border-radius: 0;
+/* Transparent click zones line up with the four buttons already drawn in the artwork. */
+.hotspot {
+  position: absolute;
+  display: block;
+  border-radius: 1vw;
   background: transparent;
-  box-shadow: none;
-  backdrop-filter: none;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: .9cqw;
-  color: #00ff9a;
-  font-size: 2.25cqw;
-  font-weight: 1000;
-  letter-spacing: .045em;
-  text-shadow: 0 0 1.1cqw rgba(0,255,154,.38);
-  text-transform: uppercase;
-}
-
-.brand-icon {
-  font-size: 2.25cqw;
-  line-height: 1;
-  filter: drop-shadow(0 0 .65cqw rgba(0,255,154,.35));
-}
-
-.subtitle {
-  margin: .75cqw 0 1.25cqw;
-  text-align: center;
-  color: #c9eee4;
-  font-size: .92cqw;
-  letter-spacing: .075em;
-  text-transform: uppercase;
-}
-
-.status-line {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: .65cqw;
-  margin-bottom: 1.15cqw;
-  color: #00ff9a;
-  font-size: 1.05cqw;
-  font-weight: 950;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-  text-shadow: 0 0 .85cqw rgba(0,255,154,.38);
-}
-
-.status-dot {
-  width: 1cqw;
-  height: 1cqw;
-  min-width: 8px;
-  min-height: 8px;
-  border-radius: 50%;
-  background: #00ff9a;
-  box-shadow: 0 0 .85cqw #00ff9a, 0 0 1.8cqw rgba(0,255,154,.45);
-  animation: pulse 1.6s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  50% { opacity: .55; transform: scale(.86); }
-}
-
-.cards {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: .9cqw;
-}
-
-.card {
-  min-height: 7.2cqw;
-  padding: .9cqw .65cqw;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  border: 1px solid rgba(0,255,154,.34);
-  border-radius: .95cqw;
-  background: linear-gradient(145deg, rgba(7,28,33,.91), rgba(2,13,19,.96));
-  box-shadow:
-    inset 0 0 1.5cqw rgba(0,255,154,.035),
-    0 0 1.1cqw rgba(0,255,154,.055);
-  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
-}
-
-.card:hover {
-  transform: translateY(-.2cqw);
-  border-color: rgba(0,255,154,.78);
-  box-shadow: 0 0 1.8cqw rgba(0,255,154,.16);
-}
-
-.card .icon {
-  font-size: 1.45cqw;
-  line-height: 1;
-  margin-bottom: .42cqw;
-}
-
-.card .label {
-  color: #8fa9a3;
-  font-size: .56cqw;
-  font-weight: 850;
-  letter-spacing: .12em;
-  text-transform: uppercase;
-}
-
-.card .value {
-  margin-top: .38cqw;
-  color: #ffffff;
-  font-size: .98cqw;
-  font-weight: 950;
-  letter-spacing: .045em;
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-
-.card .value.green {
-  color: #00ff9a;
-  text-shadow: 0 0 .75cqw rgba(0,255,154,.5);
-}
-
-.health {
-  margin-top: .9cqw;
-  min-height: 4.4cqw;
-  display: flex;
-  align-items: center;
-  gap: .9cqw;
-  padding: 0 1.2cqw;
-  border: 1px solid rgba(0,255,154,.42);
-  border-radius: .85cqw;
-  background: rgba(3,15,20,.86);
-  box-shadow:
-    inset 0 0 1.4cqw rgba(0,255,154,.03),
-    0 0 1.25cqw rgba(0,255,154,.06);
-}
-
-.health-icon {
-  font-size: 1.45cqw;
-}
-
-.health-label {
-  color: #dffcf2;
-  font-size: .73cqw;
-  font-weight: 900;
-  letter-spacing: .08em;
-  white-space: nowrap;
-}
-
-.health-bar {
-  flex: 1;
-  height: .82cqw;
-  min-height: 7px;
-  display: flex;
-  gap: .11cqw;
-  padding: .11cqw;
-  border: 1px solid rgba(0,255,154,.20);
-  border-radius: .22cqw;
-  background: rgba(0,255,154,.05);
-  overflow: hidden;
-}
-
-.health-bar span {
-  flex: 1;
-  background: #00ff9a;
-  box-shadow: 0 0 .45cqw rgba(0,255,154,.55);
-}
-
-.health-value {
-  color: #00ff9a;
-  font-size: .95cqw;
-  font-weight: 950;
-}
-
-.links {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: .9cqw;
-  margin-top: .9cqw;
-}
-
-.link {
-  min-height: 4.45cqw;
-  padding: .62cqw .9cqw;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: .16cqw;
-  color: #ffffff;
   text-decoration: none;
-  text-align: center;
-  border: 1px solid rgba(0,255,154,.30);
-  border-radius: .82cqw;
-  background: rgba(3,15,20,.86);
-  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease, background .2s ease;
+  cursor: pointer;
 }
 
-.link:hover {
-  transform: translateY(-.18cqw);
-  border-color: #00ff9a;
-  background: rgba(0,255,154,.08);
-  box-shadow: 0 0 1.5cqw rgba(0,255,154,.22);
+.hotspot:hover {
+  background: rgba(0,255,154,.045);
+  box-shadow: inset 0 0 1.2vw rgba(0,255,154,.10);
 }
 
-.link strong {
-  color: #e8fff7;
-  font-size: .66cqw;
-  letter-spacing: .055em;
-  white-space: nowrap;
-}
+.api-hotspot { left: 17.5%; width: 14.8%; top: 74.0%; height: 7.2%; }
+.socket-hotspot { left: 34.3%; width: 14.8%; top: 74.0%; height: 7.2%; }
+.game-hotspot { left: 51.1%; width: 14.8%; top: 74.0%; height: 7.2%; }
+.docs-hotspot { left: 67.9%; width: 14.8%; top: 74.0%; height: 7.2%; }
 
-.link small {
-  color: #00ff9a;
-  font-size: .63cqw;
-  font-weight: 850;
-}
+.footer { display: none; }
 
-.footer {
+@media (max-width: 700px) {
+  body::before {
+    background-size: cover;
+    background-position: center center;
+  }
+
+  .api-hotspot,
+  .socket-hotspot,
+  .game-hotspot,
+  .docs-hotspot {
+    top: 76%;
+    height: 9%;
+  }
+}
+`;
+
+const INFO_PAGE_CSS = `
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; }
+body {
+  min-height: 100vh;
+  color: #fff;
+  background: #02050d url("/assets/tech-battle-bg.jpg") center center / cover fixed no-repeat;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  overflow-x: hidden;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background: rgba(0, 5, 10, .38);
+  backdrop-filter: blur(2px);
+}
+.info-stage {
   position: relative;
   z-index: 1;
-  width: min(1000px, 92vw);
-  margin: 10px auto 30px;
-  text-align: center;
-  color: #5d7770;
-  font-size: 12px;
-  letter-spacing: .04em;
+  width: min(1000px, calc(100vw - 70px));
+  margin: 24px auto;
+  padding-bottom: 30px;
 }
-
-@media (max-width: 650px) {
-  .stage {
-    width: 100%;
-    min-height: 100vh;
-    padding: 4vh 0 4vh;
-  }
-
-  .dashboard {
-    width: 88%;
-    padding: 31vh 0 3vw;
-  }
-
-  .cards {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2.5vw;
-  }
-
-  .card {
-    min-height: 21vw;
-    border-radius: 2.5vw;
-  }
-
-  .card .icon {
-    font-size: 5.5vw;
-  }
-
-  .card .label {
-    font-size: 2.2vw;
-  }
-
-  .card .value {
-    font-size: 3.2vw;
-  }
-
-  .health {
-    min-height: 15vw;
-    padding: 2.5vw;
-    flex-wrap: wrap;
-    border-radius: 2.5vw;
-  }
-
-  .health-icon {
-    font-size: 5.5vw;
-  }
-
-  .health-label,
-  .health-value {
-    font-size: 2.8vw;
-  }
-
-  .health-bar {
-    order: 3;
-    flex-basis: 100%;
-    height: 3vw;
-  }
-
-  .links {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 2.5vw;
-  }
-
-  .link {
-    min-height: 15vw;
-    border-radius: 2.5vw;
-    padding: 2.5vw;
-  }
-
-  .link strong {
-    font-size: 2.5vw;
-  }
-
-  .link small {
-    font-size: 2.3vw;
-  }
+.info-panel {
+  border: 1px solid rgba(0,255,154,.62);
+  border-radius: 28px;
+  padding: 34px;
+  background: rgba(2, 14, 20, .91);
+  box-shadow: 0 0 35px rgba(0,255,154,.09), inset 0 0 30px rgba(0,255,154,.025);
+  backdrop-filter: blur(8px);
+}
+.info-title {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  margin: 0;
+  color: #00ff9a;
+  font-size: clamp(32px, 4vw, 56px);
+  font-weight: 950;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+}
+.info-icon { font-size: .75em; }
+.info-subtitle {
+  margin: 12px 0 26px;
+  color: #d7eee8;
+  font-size: 17px;
+}
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+.info-card {
+  min-height: 82px;
+  padding: 18px;
+  border: 1px solid rgba(0,255,154,.38);
+  border-radius: 18px;
+  background: rgba(3, 20, 27, .88);
+}
+.info-label {
+  color: #91aaa4;
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+.info-value {
+  margin-top: 7px;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 900;
+}
+.info-value.green { color: #00ff9a; }
+.info-section {
+  margin-top: 22px;
+  padding: 20px;
+  border: 1px solid rgba(0,255,154,.25);
+  border-radius: 18px;
+  background: rgba(2, 14, 20, .72);
+}
+.info-section h2 {
+  margin: 0 0 14px;
+  color: #00ff9a;
+  font-size: 18px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(0,255,154,.10);
+}
+.info-row:last-child { border-bottom: 0; }
+.info-row span:first-child { color: #a9c3bc; }
+.info-row span:last-child { color: #fff; font-weight: 750; text-align: right; }
+.code-box {
+  margin: 0;
+  max-height: 430px;
+  overflow: auto;
+  padding: 18px;
+  border: 1px solid rgba(0,255,154,.25);
+  border-radius: 14px;
+  background: #020d13;
+  color: #dffcf2;
+  font: 14px/1.55 Consolas, Monaco, monospace;
+  white-space: pre-wrap;
+}
+.back {
+  display: inline-block;
+  margin-top: 22px;
+  padding: 12px 18px;
+  border: 1px solid rgba(0,255,154,.55);
+  border-radius: 12px;
+  color: #00ff9a;
+  text-decoration: none;
+  font-weight: 850;
+}
+.back:hover { background: rgba(0,255,154,.08); }
+@media (max-width: 700px) {
+  .info-stage { width: calc(100vw - 28px); margin: 14px auto; }
+  .info-panel { padding: 22px; border-radius: 20px; }
+  .info-grid { grid-template-columns: 1fr; }
+  .info-row { flex-direction: column; gap: 4px; }
+  .info-row span:last-child { text-align: left; }
 }
 `;
 
@@ -4161,13 +4009,6 @@ function escHtml(value) {
 }
 
 function renderDashboard() {
-  const healthSegments = Array.from(
-    { length: 30 },
-    () => "<span></span>"
-  ).join("");
-
-  const environment = process.env.NODE_ENV || "production";
-
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -4179,264 +4020,58 @@ function renderDashboard() {
 </head>
 <body>
   <main class="stage" aria-label="Tech Battle server dashboard">
-    <section class="dashboard">
-
-      <section class="cards">
-        <article class="card">
-          <div class="icon">⚡</div>
-          <div class="label">Status</div>
-          <div class="value green">ACTIVE</div>
-        </article>
-
-        <article class="card">
-          <div class="icon">👥</div>
-          <div class="label">Multiplayer</div>
-          <div class="value">2–8 PLAYERS</div>
-        </article>
-
-        <article class="card">
-          <div class="icon">📡</div>
-          <div class="label">Socket.IO</div>
-          <div class="value green">CONNECTED</div>
-        </article>
-
-        <article class="card">
-          <div class="icon">🗄️</div>
-          <div class="label">Database</div>
-          <div class="value green">IN-MEMORY</div>
-        </article>
-
-        <article class="card">
-          <div class="icon">❓</div>
-          <div class="label">Quiz Questions</div>
-          <div class="value">10</div>
-        </article>
-
-        <article class="card">
-          <div class="icon">⏱️</div>
-          <div class="label">Question Timer</div>
-          <div class="value">20 SECONDS</div>
-        </article>
-
-        <article class="card">
-          <div class="icon">🏠</div>
-          <div class="label">Active Rooms</div>
-          <div class="value">${rooms.size}</div>
-        </article>
-
-        <article class="card">
-          <div class="icon">🌐</div>
-          <div class="label">Environment</div>
-          <div class="value">${escHtml(environment)}</div>
-        </article>
-      </section>
-
-      <section class="health" aria-label="Server health 100 percent">
-        <div class="health-icon">💚</div>
-        <div class="health-label">SERVER HEALTH</div>
-        <div class="health-bar">${healthSegments}</div>
-        <div class="health-value">100%</div>
-      </section>
-
-      <nav class="links" aria-label="Server links">
-        <a class="link" href="/dashboard/health">
-          <strong>❤️ API STATUS</strong>
-          <small>/health</small>
-        </a>
-
-        <a class="link" href="/dashboard/socket">
-          <strong>📡 SOCKET.IO</strong>
-          <small>Enabled</small>
-        </a>
-
-        <a class="link" href="/dashboard/api">
-          <strong>🎮 GAME API</strong>
-          <small>/api</small>
-        </a>
-
-        <a class="link" href="/dashboard/docs">
-          <strong>📖 DOCUMENTATION</strong>
-          <small>/docs</small>
-        </a>
-      </nav>
-
-    </section>
+    <a class="hotspot api-hotspot" href="/health?view=page" aria-label="API Status"></a>
+    <a class="hotspot socket-hotspot" href="/socket-info?view=page" aria-label="Socket.IO"></a>
+    <a class="hotspot game-hotspot" href="/api?view=page" aria-label="Game API"></a>
+    <a class="hotspot docs-hotspot" href="/docs?view=page" aria-label="Documentation"></a>
   </main>
-
-  <div class="footer">
-    TECH BATTLE • REAL-TIME MULTIPLAYER • SOCKET.IO
-  </div>
 </body>
 </html>`;
 }
 
-app.get("/", (req, res) => {
-  res.send(renderDashboard());
-});
+function renderInfoPage({ icon, title, subtitle, cards = [], sections = [], code = null }) {
+  const cardsHtml = cards.map((card) => `
+    <article class="info-card">
+      <div class="info-label">${escHtml(card.label)}</div>
+      <div class="info-value ${card.green ? "green" : ""}">${escHtml(card.value)}</div>
+    </article>
+  `).join("");
 
-/* ============================================================
-   DASHBOARD DETAIL PAGES
-   These are browser-friendly views. The JSON API routes remain
-   available at /health, /socket-info, /api and /docs.
-============================================================ */
+  const sectionsHtml = sections.map((section) => `
+    <section class="info-section">
+      <h2>${escHtml(section.title)}</h2>
+      ${(section.rows || []).map(([label, value]) => `
+        <div class="info-row">
+          <span>${escHtml(label)}</span>
+          <span>${escHtml(value)}</span>
+        </div>
+      `).join("")}
+    </section>
+  `).join("");
 
-const DETAIL_CSS = `
-* { box-sizing: border-box; }
+  const codeHtml = code == null ? "" : `
+    <section class="info-section">
+      <h2>Response Data</h2>
+      <pre class="code-box">${escHtml(JSON.stringify(code, null, 2))}</pre>
+    </section>
+  `;
 
-html, body {
-  margin: 0;
-  min-height: 100%;
-}
-
-body {
-  min-height: 100vh;
-  background: #02050d;
-  color: #ffffff;
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  overflow-x: hidden;
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  background: url("/assets/tech-battle-bg.jpg") center center / cover no-repeat;
-}
-
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  background: rgba(0, 4, 12, .12);
-  pointer-events: none;
-}
-
-.detail-page {
-  position: relative;
-  z-index: 1;
-  width: min(1000px, 88vw);
-  margin: 0 auto;
-  padding: 8vh 0 8vh;
-}
-
-.detail-card {
-  border: 1px solid rgba(0,255,154,.55);
-  border-radius: 24px;
-  background: rgba(2, 10, 17, .88);
-  box-shadow:
-    0 0 35px rgba(0,255,154,.12),
-    inset 0 0 30px rgba(0,255,154,.025);
-  padding: 34px;
-  backdrop-filter: blur(7px);
-}
-
-.detail-title {
-  color: #00ff9a;
-  font-size: clamp(24px, 3vw, 42px);
-  font-weight: 950;
-  letter-spacing: .04em;
-  text-transform: uppercase;
-  margin: 0;
-}
-
-.detail-subtitle {
-  color: #c9eee4;
-  margin: 10px 0 28px;
-}
-
-.detail-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
-}
-
-.detail-item {
-  padding: 18px;
-  border: 1px solid rgba(0,255,154,.28);
-  border-radius: 14px;
-  background: rgba(4, 23, 30, .86);
-}
-
-.detail-label {
-  color: #8fa9a3;
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: .1em;
-  font-weight: 800;
-}
-
-.detail-value {
-  color: #ffffff;
-  margin-top: 7px;
-  font-size: 18px;
-  font-weight: 900;
-}
-
-.detail-value.green {
-  color: #00ff9a;
-  text-shadow: 0 0 12px rgba(0,255,154,.35);
-}
-
-.back {
-  display: inline-flex;
-  margin-top: 24px;
-  padding: 12px 18px;
-  border: 1px solid rgba(0,255,154,.42);
-  border-radius: 11px;
-  color: #00ff9a;
-  text-decoration: none;
-  font-weight: 850;
-  background: rgba(0,255,154,.035);
-}
-
-.back:hover {
-  border-color: #00ff9a;
-  background: rgba(0,255,154,.09);
-}
-
-pre {
-  margin: 0;
-  white-space: pre-wrap;
-  word-break: break-word;
-  color: #dffcf2;
-  line-height: 1.65;
-  font-size: 14px;
-}
-
-@media (max-width: 650px) {
-  .detail-page {
-    width: 92vw;
-    padding: 4vh 0;
-  }
-
-  .detail-card {
-    padding: 22px;
-    border-radius: 18px;
-  }
-
-  .detail-grid {
-    grid-template-columns: 1fr;
-  }
-}
-`;
-
-function renderDetailPage(title, subtitle, content) {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tech Battle • ${escHtml(title)}</title>
-<style>${DETAIL_CSS}</style>
+<title>${escHtml(title)} • Tech Battle</title>
+<style>${INFO_PAGE_CSS}</style>
 </head>
 <body>
-  <main class="detail-page">
-    <section class="detail-card">
-      <h1 class="detail-title">⚔️ ${escHtml(title)}</h1>
-      <p class="detail-subtitle">${escHtml(subtitle)}</p>
-      ${content}
+  <main class="info-stage">
+    <section class="info-panel">
+      <h1 class="info-title"><span class="info-icon">${icon}</span>${escHtml(title)}</h1>
+      <p class="info-subtitle">${escHtml(subtitle)}</p>
+      ${cardsHtml ? `<section class="info-grid">${cardsHtml}</section>` : ""}
+      ${sectionsHtml}
+      ${codeHtml}
       <a class="back" href="/">← Back to Tech Battle Server</a>
     </section>
   </main>
@@ -4444,129 +4079,24 @@ function renderDetailPage(title, subtitle, content) {
 </html>`;
 }
 
-app.get("/dashboard/health", (req, res) => {
-  const uptime = Math.floor(process.uptime());
+/* ---------- HOME ---------- */
 
-  res.send(
-    renderDetailPage(
-      "API Status",
-      "Live server health information",
-      `<div class="detail-grid">
-        <div class="detail-item"><div class="detail-label">Status</div><div class="detail-value green">ONLINE</div></div>
-        <div class="detail-item"><div class="detail-label">Active Rooms</div><div class="detail-value">${rooms.size}</div></div>
-        <div class="detail-item"><div class="detail-label">Uptime</div><div class="detail-value">${uptime}s</div></div>
-        <div class="detail-item"><div class="detail-label">Health</div><div class="detail-value green">100%</div></div>
-      </div>`
-    )
-  );
-});
-
-app.get("/dashboard/socket", (req, res) => {
-  res.send(
-    renderDetailPage(
-      "Socket.IO",
-      "Real-time multiplayer transport",
-      `<div class="detail-grid">
-        <div class="detail-item"><div class="detail-label">Status</div><div class="detail-value green">ENABLED</div></div>
-        <div class="detail-item"><div class="detail-label">Transport</div><div class="detail-value">WebSocket / Polling</div></div>
-        <div class="detail-item"><div class="detail-label">Minimum Players</div><div class="detail-value">${MIN_PLAYERS}</div></div>
-        <div class="detail-item"><div class="detail-label">Maximum Players</div><div class="detail-value">${MAX_PLAYERS}</div></div>
-      </div>`
-    )
-  );
-});
-
-app.get("/dashboard/api", (req, res) => {
-  const apiData = {
-    service: "Tech Battle Server",
-    status: "online",
-    multiplayer: true,
-    socketIO: true,
-    players: { minimum: MIN_PLAYERS, maximum: MAX_PLAYERS },
-    questions: 10,
-    questionTime: QUESTION_TIME,
-    matchSizes: MATCH_SIZES,
-    battleFormats: Object.fromEntries(
-      MATCH_SIZES.map((size) => [
-        size,
-        Object.entries(BATTLE_FORMATS[size]).map(([id, config]) => ({
-          id,
-          ...config
-        }))
-      ])
-    ),
-    quizTypes: Object.entries(QUIZ_TYPES).map(([id, config]) => ({
-      id,
-      label: config.label,
-      categories: config.categories
-    }))
-  };
-
-  res.send(
-    renderDetailPage(
-      "Game API",
-      "Available multiplayer game configuration",
-      `<div class="detail-item"><pre>${escHtml(JSON.stringify(apiData, null, 2))}</pre></div>`
-    )
-  );
-});
-
-app.get("/dashboard/docs", (req, res) => {
-  const docs = {
-    transport: "Socket.IO",
-    limits: {
-      minPlayers: MIN_PLAYERS,
-      maxPlayers: MAX_PLAYERS,
-      questionTimeMs: QUESTION_TIME,
-      questionsPerGame: 10
-    },
-    clientEvents: [
-      "time_sync",
-      "create_room",
-      "join_room",
-      "reconnect_player",
-      "start_game",
-      "use_powerup",
-      "submit_answer",
-      "play_again",
-      "leave_game"
-    ],
-    serverEvents: [
-      "room_state",
-      "countdown",
-      "question",
-      "answer_count",
-      "question_results",
-      "game_finished",
-      "leaderboard_update",
-      "battle_intro"
-    ]
-  };
-
-  res.send(
-    renderDetailPage(
-      "Documentation",
-      "Tech Battle server events and limits",
-      `<div class="detail-item"><pre>${escHtml(JSON.stringify(docs, null, 2))}</pre></div>`
-    )
-  );
+app.get("/", (req, res) => {
+  res.send(renderDashboard());
 });
 
 /* ============================================================
    API INFO
 ============================================================ */
 
-app.get("/api", (req, res) => {
-  res.json({
+function getApiData() {
+  return {
     service: "Tech Battle Server",
     status: "online",
     multiplayer: true,
     socketIO: true,
     environment: process.env.NODE_ENV || "production",
-    players: {
-      minimum: MIN_PLAYERS,
-      maximum: MAX_PLAYERS
-    },
+    players: { minimum: MIN_PLAYERS, maximum: MAX_PLAYERS },
     questions: 10,
     questionTime: QUESTION_TIME,
     matchSizes: MATCH_SIZES,
@@ -4581,101 +4111,186 @@ app.get("/api", (req, res) => {
       label: config.label,
       categories: config.categories
     }))
-  });
-});
+  };
+}
 
-app.get("/socket-info", (req, res) => {
-  res.json({
+function getSocketInfoData() {
+  return {
     ok: true,
     service: "Tech Battle Socket.IO",
     status: "enabled",
     transport: "WebSocket / polling"
-  });
-});
+  };
+}
 
-/* ============================================================
-   HEALTH CHECK
-============================================================ */
-
-app.get("/health", (req, res) => {
-  res.json({
+function getHealthData() {
+  return {
     ok: true,
     service: "Tech Battle Server",
     status: "online",
     timestamp: Date.now(),
     uptimeSeconds: Math.floor(process.uptime()),
     activeRooms: rooms.size
-  });
+  };
+}
+
+function getDocsData() {
+  return {
+    service: "Tech Battle Server",
+    transport: "Socket.IO",
+    limits: {
+      minPlayers: MIN_PLAYERS,
+      maxPlayers: MAX_PLAYERS,
+      questionTimeMs: QUESTION_TIME,
+      questionsPerGame: 10
+    },
+    matchSizes: MATCH_SIZES,
+    battleFormats: Object.fromEntries(
+      MATCH_SIZES.map((size) => [
+        size,
+        Object.entries(BATTLE_FORMATS[size]).map(([id, config]) => ({ id, ...config }))
+      ])
+    ),
+    quizTypes: Object.entries(QUIZ_TYPES).map(([id, config]) => ({
+      id,
+      label: config.label,
+      categories: config.categories
+    })),
+    clientEvents: [
+      "time_sync", "create_room", "join_room", "reconnect_player",
+      "start_game", "use_powerup", "submit_answer", "play_again", "leave_game"
+    ],
+    serverEvents: [
+      "room_state", "countdown", "question", "answer_count", "question_results",
+      "game_finished", "leaderboard_update", "battle_intro"
+    ]
+  };
+}
+
+/* ---------- GAME API ---------- */
+app.get("/api", (req, res) => {
+  const data = getApiData();
+
+  if (req.query.view !== "page") {
+    return res.json(data);
+  }
+
+  return res.send(renderInfoPage({
+    icon: "⚔️",
+    title: "Game API",
+    subtitle: "Available multiplayer game configuration",
+    cards: [
+      { label: "Status", value: "ONLINE", green: true },
+      { label: "Players", value: `${MIN_PLAYERS}–${MAX_PLAYERS}` },
+      { label: "Questions", value: "10" },
+      { label: "Question Timer", value: `${QUESTION_TIME / 1000} SECONDS` },
+      { label: "Match Sizes", value: MATCH_SIZES.join(" • ") },
+      { label: "Quiz Types", value: String(Object.keys(QUIZ_TYPES).length) }
+    ],
+    sections: [
+      {
+        title: "Battle Formats",
+        rows: MATCH_SIZES.flatMap((size) =>
+          Object.entries(BATTLE_FORMATS[size]).map(([id, config]) => [
+            `${size} Players`, config.label
+          ])
+        )
+      },
+      {
+        title: "Quiz Types",
+        rows: Object.entries(QUIZ_TYPES).map(([id, config]) => [
+          id,
+          config.label.replace(/^\S+\s/, "")
+        ])
+      }
+    ]
+  }));
 });
 
-/* ============================================================
-   DOCUMENTATION
-============================================================ */
+/* ---------- SOCKET.IO ---------- */
+app.get("/socket-info", (req, res) => {
+  const data = getSocketInfoData();
 
-app.get(
-  "/docs",
-  (req, res) => {
-    res.json({
-      service:
-        "Tech Battle Server",
-
-      transport:
-        "Socket.IO",
-
-      limits: {
-        minPlayers:
-          MIN_PLAYERS,
-
-        maxPlayers:
-          MAX_PLAYERS,
-
-        questionTimeMs:
-          QUESTION_TIME,
-
-        questionsPerGame:
-          10
-      },
-
-      quizTypes:
-        Object.entries(
-          QUIZ_TYPES
-        ).map(
-          ([id, config]) => ({
-            id,
-
-            label:
-              config.label,
-
-            categories:
-              config.categories
-          })
-        ),
-
-      clientEvents: [
-        "time_sync",
-        "create_room",
-        "join_room",
-        "reconnect_player",
-        "start_game",
-        "use_powerup",
-        "submit_answer",
-        "play_again",
-        "leave_game"
-      ],
-
-      serverEvents: [
-        "room_state",
-        "countdown",
-        "question",
-        "answer_count",
-        "question_results",
-        "game_finished",
-        "leaderboard_update",
-        "battle_intro",
-      ]
-    });
+  if (req.query.view !== "page") {
+    return res.json(data);
   }
-);
+
+  return res.send(renderInfoPage({
+    icon: "📡",
+    title: "Socket.IO",
+    subtitle: "Real-time multiplayer connection service",
+    cards: [
+      { label: "Status", value: "ENABLED", green: true },
+      { label: "Transport", value: "WEBSOCKET / POLLING" },
+      { label: "Rooms", value: String(rooms.size) },
+      { label: "Reconnect", value: "ENABLED" }
+    ],
+    sections: [
+      {
+        title: "Realtime Events",
+        rows: [
+          ["Room state", "room_state"],
+          ["Battle intro", "battle_intro"],
+          ["Leaderboard", "leaderboard_update"],
+          ["Questions", "question / question_results"],
+          ["Game finished", "game_finished"]
+        ]
+      }
+    ]
+  }));
+});
+
+/* ---------- HEALTH ---------- */
+app.get("/health", (req, res) => {
+  const data = getHealthData();
+
+  if (req.query.view !== "page") {
+    return res.json(data);
+  }
+
+  return res.send(renderInfoPage({
+    icon: "❤️",
+    title: "API Status",
+    subtitle: "Live server health information",
+    cards: [
+      { label: "Status", value: "ONLINE", green: true },
+      { label: "Active Rooms", value: String(rooms.size) },
+      { label: "Uptime", value: `${data.uptimeSeconds}s` },
+      { label: "Health", value: "100%", green: true }
+    ]
+  }));
+});
+
+/* ---------- DOCUMENTATION ---------- */
+app.get("/docs", (req, res) => {
+  const data = getDocsData();
+
+  if (req.query.view !== "page") {
+    return res.json(data);
+  }
+
+  return res.send(renderInfoPage({
+    icon: "📖",
+    title: "Documentation",
+    subtitle: "Tech Battle server events, limits and configuration",
+    cards: [
+      { label: "Transport", value: "SOCKET.IO" },
+      { label: "Players", value: `${MIN_PLAYERS}–${MAX_PLAYERS}` },
+      { label: "Questions / Game", value: "10" },
+      { label: "Question Time", value: `${QUESTION_TIME / 1000} SECONDS` }
+    ],
+    sections: [
+      {
+        title: "Client Events",
+        rows: data.clientEvents.map((event) => [event, "Client → Server"])
+      },
+      {
+        title: "Server Events",
+        rows: data.serverEvents.map((event) => [event, "Server → Client"])
+      }
+    ]
+  }));
+});
 
 /* ============================================================
    START SERVER
