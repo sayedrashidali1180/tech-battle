@@ -3999,3 +3999,423 @@ footer span {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============================================================
+   PHASE 3 — PROFILE / DAILY CHALLENGE
+============================================================ */
+
+.profile-card,
+.daily-card {
+  width: min(920px, 100%);
+}
+
+.profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+}
+
+.profile-header h1 {
+  margin: 4px 0 4px;
+  font-size: clamp(30px, 5vw, 48px);
+}
+
+.profile-header p {
+  margin: 0;
+  color: #8fa6a1;
+}
+
+.profile-avatar-large {
+  width: 82px;
+  height: 82px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid rgba(0, 255, 154, .55);
+  border-radius: 50%;
+  color: #00ff9a;
+  background: rgba(0, 255, 154, .08);
+  box-shadow: 0 0 28px rgba(0, 255, 154, .14), inset 0 0 25px rgba(0, 255, 154, .05);
+  font-size: 32px;
+  font-weight: 900;
+}
+
+.profile-overall {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  align-items: center;
+  gap: 32px;
+  padding: 28px;
+  border: 1px solid rgba(0, 255, 154, .18);
+  border-radius: 20px;
+  background: linear-gradient(135deg, rgba(0, 255, 154, .055), rgba(255,255,255,.015));
+}
+
+.accuracy-ring {
+  width: 180px;
+  height: 180px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: conic-gradient(#00ff9a calc(var(--progress) * 1%), rgba(255,255,255,.08) 0);
+  box-shadow: 0 0 35px rgba(0, 255, 154, .12);
+  position: relative;
+}
+
+.accuracy-ring::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 50%;
+  background: #061014;
+}
+
+.accuracy-ring-inner {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.accuracy-ring-inner strong {
+  color: #fff;
+  font-size: 38px;
+  line-height: 1;
+}
+
+.accuracy-ring-inner span {
+  margin-top: 8px;
+  color: #00ff9a;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+
+.profile-overall-copy h2 {
+  margin: 6px 0 8px;
+}
+
+.profile-overall-copy p {
+  margin: 0;
+  color: #8fa6a1;
+  line-height: 1.6;
+}
+
+.profile-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.profile-stat-card,
+.difficulty-stat-card {
+  padding: 17px;
+  border: 1px solid rgba(0, 255, 154, .14);
+  border-radius: 15px;
+  background: rgba(3, 16, 21, .78);
+}
+
+.profile-stat-card span,
+.difficulty-stat-card span,
+.daily-result-stats span {
+  display: block;
+  color: #6f8983;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.profile-stat-card strong {
+  display: block;
+  margin-top: 8px;
+  color: #fff;
+  font-size: 24px;
+}
+
+.profile-section-title {
+  margin: 30px 0 13px;
+  color: #00ff9a;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .16em;
+}
+
+.category-stat-list {
+  display: grid;
+  gap: 12px;
+}
+
+.category-stat-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) 2fr 90px;
+  align-items: center;
+  gap: 12px;
+}
+
+.category-stat-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  color: #dff9f0;
+  font-size: 13px;
+}
+
+.category-stat-label strong {
+  color: #00ff9a;
+}
+
+.category-stat-track {
+  height: 8px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: rgba(255,255,255,.07);
+}
+
+.category-stat-track div {
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(0,255,154,.45), #00ff9a);
+  transition: width .6s ease;
+}
+
+.category-stat-row small,
+.difficulty-stat-card small {
+  color: #718983;
+  text-align: right;
+}
+
+.difficulty-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.difficulty-stat-card strong {
+  display: block;
+  margin-top: 8px;
+  color: #fff;
+  font-size: 28px;
+}
+
+.difficulty-stat-card small {
+  display: block;
+  margin-top: 5px;
+  text-align: left;
+}
+
+.profile-history {
+  overflow: hidden;
+  border: 1px solid rgba(0, 255, 154, .13);
+  border-radius: 15px;
+}
+
+.history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.history-row:last-child {
+  border-bottom: 0;
+}
+
+.history-row div {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-row small {
+  color: #718983;
+}
+
+.history-row > strong {
+  color: #00ff9a;
+  white-space: nowrap;
+}
+
+.empty-profile {
+  padding: 24px;
+  color: #718983;
+  text-align: center;
+}
+
+.profile-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.profile-home-button,
+.daily-home-button {
+  border-color: rgba(0, 255, 154, .3) !important;
+}
+
+.daily-home-button {
+  background: linear-gradient(135deg, rgba(255, 117, 0, .18), rgba(0,255,154,.06)) !important;
+}
+
+.daily-hero {
+  text-align: center;
+}
+
+.daily-icon,
+.daily-final-trophy {
+  font-size: 54px;
+  filter: drop-shadow(0 0 18px rgba(0,255,154,.25));
+}
+
+.daily-hero h1,
+.daily-card > h1 {
+  margin: 8px 0;
+  font-size: clamp(30px, 6vw, 52px);
+}
+
+.daily-hero p,
+.daily-card > p {
+  margin: 0;
+  color: #819a94;
+}
+
+.daily-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 26px 0;
+}
+
+.daily-feature-grid > div {
+  padding: 17px;
+  border: 1px solid rgba(0,255,154,.15);
+  border-radius: 15px;
+  text-align: center;
+  background: rgba(3,16,21,.78);
+}
+
+.daily-feature-grid strong {
+  display: block;
+  color: #00ff9a;
+  font-size: 25px;
+}
+
+.daily-feature-grid span {
+  display: block;
+  margin-top: 5px;
+  color: #718983;
+  font-size: 11px;
+}
+
+.daily-question-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+  color: #718983;
+  font-size: 12px;
+}
+
+.daily-result-icon {
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  margin: 0 auto 14px;
+  border: 1px solid rgba(0,255,154,.35);
+  border-radius: 50%;
+  color: #00ff9a;
+  font-size: 40px;
+  font-weight: 900;
+  background: rgba(0,255,154,.07);
+}
+
+.daily-result-icon.wrong {
+  color: #ff6b7a;
+  border-color: rgba(255,107,122,.35);
+  background: rgba(255,107,122,.07);
+}
+
+.daily-card > h1,
+.daily-card > p,
+.daily-card > .eyebrow {
+  text-align: center;
+}
+
+.daily-result-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 24px 0;
+}
+
+.daily-result-stats > div {
+  padding: 16px;
+  border: 1px solid rgba(0,255,154,.14);
+  border-radius: 14px;
+  text-align: center;
+}
+
+.daily-result-stats strong {
+  display: block;
+  margin-top: 7px;
+  color: #fff;
+  font-size: 24px;
+}
+
+.daily-streak-banner {
+  margin: 20px 0;
+  padding: 14px;
+  border: 1px solid rgba(0,255,154,.2);
+  border-radius: 12px;
+  color: #00ff9a;
+  background: rgba(0,255,154,.06);
+  text-align: center;
+  font-weight: 900;
+}
+
+@media (max-width: 700px) {
+  .profile-header {
+    align-items: flex-start;
+  }
+
+  .profile-avatar-large {
+    width: 64px;
+    height: 64px;
+    font-size: 25px;
+  }
+
+  .profile-overall {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    text-align: center;
+  }
+
+  .profile-stat-grid,
+  .difficulty-stat-grid,
+  .daily-feature-grid,
+  .daily-result-stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .category-stat-row {
+    grid-template-columns: 1fr auto;
+  }
+
+  .category-stat-track {
+    grid-column: 1 / -1;
+  }
+
+  .category-stat-row small {
+    display: none;
+  }
+
+  .daily-question-footer {
+    flex-direction: column;
+  }
+}

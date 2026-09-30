@@ -95,6 +95,190 @@ const BATTLE_FORMATS = {
 };
 
 
+
+const PROFILE_KEY = "techBattleProfile";
+
+const PROFILE_CATEGORIES = [
+  "aptitude",
+  "reasoning",
+  "verbal",
+  "programming",
+  "ai",
+  "computer-science",
+  "databases",
+  "web-development",
+  "networking",
+  "cloud",
+  "cybersecurity"
+];
+
+function createEmptyProfile() {
+  return {
+    version: 1,
+    name: "",
+    gamesPlayed: 0,
+    dailyChallenges: 0,
+    answered: 0,
+    correct: 0,
+    score: 0,
+    highestScore: 0,
+    responseTimeMs: 0,
+    bestAverageResponseTime: 0,
+    currentDailyStreak: 0,
+    longestDailyStreak: 0,
+    lastDailyDate: null,
+    categories: {},
+    difficulties: {},
+    history: []
+  };
+}
+
+function loadProfile() {
+  try {
+    const saved = localStorage.getItem(PROFILE_KEY);
+    if (!saved) return createEmptyProfile();
+
+    const parsed = JSON.parse(saved);
+    return {
+      ...createEmptyProfile(),
+      ...parsed,
+      categories: parsed.categories || {},
+      difficulties: parsed.difficulties || {},
+      history: Array.isArray(parsed.history) ? parsed.history : []
+    };
+  } catch {
+    return createEmptyProfile();
+  }
+}
+
+function saveProfile(profile) {
+  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+}
+
+function accuracyOf(bucket) {
+  return bucket?.answered
+    ? Math.round((bucket.correct / bucket.answered) * 100)
+    : 0;
+}
+
+function profileSummary(profile) {
+  const accuracy = profile.answered
+    ? Math.round((profile.correct / profile.answered) * 100)
+    : 0;
+
+  const averageResponseTime = profile.answered
+    ? Number((profile.responseTimeMs / profile.answered / 1000).toFixed(1))
+    : 0;
+
+  return {
+    ...profile,
+    accuracy,
+    averageResponseTime
+  };
+}
+
+function mergePerformance(profile, performance, metadata = {}) {
+  const next = {
+    ...profile,
+    categories: { ...(profile.categories || {}) },
+    difficulties: { ...(profile.difficulties || {}) },
+    history: [...(profile.history || [])]
+  };
+
+  const answered = Number(performance?.answered || 0);
+  const correct = Number(performance?.correct || 0);
+  const avgTimeMs = Number(performance?.averageResponseTime || 0) * 1000;
+
+  next.answered += answered;
+  next.correct += correct;
+  next.responseTimeMs += avgTimeMs * answered;
+  next.score += Number(metadata.score || 0);
+  next.highestScore = Math.max(next.highestScore || 0, Number(metadata.score || 0));
+  next.gamesPlayed += metadata.daily ? 0 : 1;
+  next.dailyChallenges += metadata.daily ? 1 : 0;
+
+  if (answered > 0) {
+    const avg = next.responseTimeMs / next.answered / 1000;
+    next.bestAverageResponseTime = next.bestAverageResponseTime
+      ? Math.min(next.bestAverageResponseTime, avg)
+      : avg;
+  }
+
+  for (const item of performance?.byCategory || []) {
+    const bucket = next.categories[item.key] || {
+      answered: 0,
+      correct: 0,
+      responseTimeMs: 0
+    };
+
+    bucket.answered += Number(item.answered || 0);
+    bucket.correct += Number(item.correct || 0);
+    bucket.responseTimeMs += Number(item.averageResponseTime || 0) * 1000 * Number(item.answered || 0);
+    next.categories[item.key] = bucket;
+  }
+
+  for (const item of performance?.byDifficulty || []) {
+    const bucket = next.difficulties[item.key] || {
+      answered: 0,
+      correct: 0,
+      responseTimeMs: 0
+    };
+
+    bucket.answered += Number(item.answered || 0);
+    bucket.correct += Number(item.correct || 0);
+    bucket.responseTimeMs += Number(item.averageResponseTime || 0) * 1000 * Number(item.answered || 0);
+    next.difficulties[item.key] = bucket;
+  }
+
+  const historyItem = {
+    id: metadata.id || `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+    date: new Date().toISOString(),
+    type: metadata.daily ? "Daily Challenge" : "Battle",
+    score: Number(metadata.score || 0),
+    correct,
+    answered,
+    accuracy: answered ? Math.round((correct / answered) * 100) : 0,
+    quizType: metadata.quizType || "",
+    difficulty: metadata.difficulty || ""
+  };
+
+  if (!next.history.some((item) => item.id === historyItem.id)) {
+    next.history.unshift(historyItem);
+  }
+
+  next.history = next.history.slice(0, 30);
+
+  return next;
+}
+
+function applyDailyStreak(profile) {
+  const next = { ...profile };
+  const today = new Date().toISOString().slice(0, 10);
+
+  if (next.lastDailyDate === today) {
+    return next;
+  }
+
+  if (next.lastDailyDate) {
+    const previous = new Date(`${next.lastDailyDate}T00:00:00Z`);
+    const current = new Date(`${today}T00:00:00Z`);
+    const days = Math.round((current - previous) / 86400000);
+    next.currentDailyStreak = days === 1
+      ? (next.currentDailyStreak || 0) + 1
+      : 1;
+  } else {
+    next.currentDailyStreak = 1;
+  }
+
+  next.longestDailyStreak = Math.max(
+    next.longestDailyStreak || 0,
+    next.currentDailyStreak
+  );
+
+  next.lastDailyDate = today;
+  return next;
+}
+
 // --------------------------------------------------
 // APP
 // --------------------------------------------------
@@ -168,6 +352,23 @@ function App() {
   const [serverOffset, setServerOffset] = useState(0);
 
   const [restoringSession, setRestoringSession] = useState(false);
+
+  const meRef = useRef(null);
+  const roomRef = useRef(null);
+  const nameRef = useRef("");
+
+  const [profile, setProfile] = useState(() => loadProfile());
+
+  const [dailyQuestion, setDailyQuestion] = useState(null);
+  const [dailyQuestionResult, setDailyQuestionResult] = useState(null);
+  const [dailyFinal, setDailyFinal] = useState(null);
+  const [dailySelectedAnswer, setDailySelectedAnswer] = useState(null);
+  const [dailyTimeRemaining, setDailyTimeRemaining] = useState(20);
+  const [dailyBusy, setDailyBusy] = useState(false);
+
+  useEffect(() => { meRef.current = me; }, [me]);
+  useEffect(() => { roomRef.current = room; }, [room]);
+  useEffect(() => { nameRef.current = name; }, [name]);
 
 
   // --------------------------------------------------
@@ -312,13 +513,80 @@ function App() {
     const handleGameFinished = (data) => {
       setFinalResults(data);
 
+      const currentMe = meRef.current;
+      const currentRoom = roomRef.current;
+      const myPlayer = (data?.leaderboard || []).find(
+        (player) => player.id === currentMe?.id
+      );
+      const myPerformance = data?.performanceByPlayer?.[currentMe?.id];
+
+      if (myPerformance && data?.matchId) {
+        setProfile((current) => {
+          if ((current.history || []).some((item) => item.id === data.matchId)) {
+            return current;
+          }
+
+          const next = mergePerformance(
+            current,
+            myPerformance,
+            {
+              id: data.matchId,
+              score: myPlayer?.total || 0,
+              quizType: currentRoom?.quizType || "",
+              difficulty: currentRoom?.difficulty || ""
+            }
+          );
+          next.name = currentMe?.name || current.name;
+          saveProfile(next);
+          return next;
+        });
+      }
+
       setQuestion(null);
-
       setQuestionResults(null);
-
       setCountdown(null);
-
       setScreen("final");
+    };
+
+    const handleDailyQuestion = (data) => {
+      setDailyQuestion(data);
+      setDailyQuestionResult(null);
+      setDailySelectedAnswer(null);
+      setScreen("daily");
+    };
+
+    const handleDailyQuestionResult = (data) => {
+      setDailyQuestionResult(data);
+      setDailySelectedAnswer(null);
+      setScreen("daily-results");
+    };
+
+    const handleDailyFinished = (data) => {
+      setDailyFinal(data);
+
+      setProfile((current) => {
+        if ((current.history || []).some((item) => item.id === data.attemptId)) {
+          return current;
+        }
+
+        let next = mergePerformance(
+          current,
+          data.performance,
+          {
+            id: data.attemptId,
+            score: data.score,
+            daily: true
+          }
+        );
+        next = applyDailyStreak(next);
+        next.name = nameRef.current || current.name;
+        saveProfile(next);
+        return next;
+      });
+
+      setDailyQuestion(null);
+      setDailyQuestionResult(null);
+      setScreen("daily-final");
     };
 
 
@@ -350,6 +618,10 @@ function App() {
 
     socket.on("game_finished", handleGameFinished);
 
+    socket.on("daily_question", handleDailyQuestion);
+    socket.on("daily_question_result", handleDailyQuestionResult);
+    socket.on("daily_finished", handleDailyFinished);
+
     socket.on("server_error", handleError);
 
 
@@ -375,6 +647,10 @@ function App() {
       socket.off("question_results", handleQuestionResults);
 
       socket.off("game_finished", handleGameFinished);
+
+      socket.off("daily_question", handleDailyQuestion);
+      socket.off("daily_question_result", handleDailyQuestionResult);
+      socket.off("daily_finished", handleDailyFinished);
 
       socket.off("server_error", handleError);
     };
@@ -523,6 +799,28 @@ function App() {
       clearInterval(interval);
     };
   }, [question, serverOffset]);
+
+
+  // --------------------------------------------------
+  // DAILY CHALLENGE TIMER
+  // --------------------------------------------------
+
+  useEffect(() => {
+    if (!dailyQuestion?.endsAt) {
+      return;
+    }
+
+    const updateDailyTimer = () => {
+      const now = Date.now() + serverOffset;
+      const remaining = Math.max(0, dailyQuestion.endsAt - now) / 1000;
+      setDailyTimeRemaining(remaining);
+    };
+
+    updateDailyTimer();
+    const interval = setInterval(updateDailyTimer, 50);
+
+    return () => clearInterval(interval);
+  }, [dailyQuestion, serverOffset]);
 
 
   // --------------------------------------------------
@@ -739,6 +1037,85 @@ function App() {
 
 
   // --------------------------------------------------
+  // PROFILE / DAILY CHALLENGE
+  // --------------------------------------------------
+
+  const openProfile = () => {
+    setError("");
+    setProfile(loadProfile());
+    setScreen("profile");
+  };
+
+  const startDailyChallenge = () => {
+    setError("");
+    setDailyBusy(true);
+
+    const playerName = (name.trim() || profile.name || "Player")
+      .replace(/\s+/g, " ")
+      .slice(0, 16);
+
+    if (playerName.length < 2) {
+      setDailyBusy(false);
+      setError("Enter your name first.");
+      setScreen("profile");
+      return;
+    }
+
+    const send = () => {
+      socket.emit("daily_start", { name: playerName }, (response) => {
+        setDailyBusy(false);
+
+        if (!response?.ok) {
+          setError(response?.error || "Unable to start the daily challenge.");
+          return;
+        }
+
+        const nextProfile = { ...profile, name: playerName };
+        setProfile(nextProfile);
+        saveProfile(nextProfile);
+      });
+    };
+
+    if (!socket.connected) {
+      socket.connect();
+      socket.once("connect", send);
+    } else {
+      send();
+    }
+  };
+
+  const submitDailyAnswer = (index) => {
+    if (!dailyQuestion || dailySelectedAnswer !== null || dailyTimeRemaining <= 0) {
+      return;
+    }
+
+    setDailySelectedAnswer(index);
+
+    socket.emit(
+      "daily_answer",
+      {
+        questionId: dailyQuestion.id,
+        index
+      },
+      (response) => {
+        if (!response?.ok) {
+          setDailySelectedAnswer(null);
+          setError(response?.error || "Unable to submit answer.");
+        }
+      }
+    );
+  };
+
+  const leaveDailyChallenge = () => {
+    socket.emit("daily_leave", {}, () => {});
+    setDailyQuestion(null);
+    setDailyQuestionResult(null);
+    setDailyFinal(null);
+    setDailySelectedAnswer(null);
+    setScreen("home");
+  };
+
+  // --------------------------------------------------
   // LEAVE
   // --------------------------------------------------
 
@@ -752,6 +1129,10 @@ function App() {
     setQuestion(null);
     setQuestionResults(null);
     setFinalResults(null);
+    setDailyQuestion(null);
+    setDailyQuestionResult(null);
+    setDailyFinal(null);
+    setDailySelectedAnswer(null);
     setCountdown(null);
     setEliminatedOptions([]);
 
@@ -836,6 +1217,20 @@ function App() {
                 JOIN ROOM
               </button>
 
+              <button
+                className="profile-home-button"
+                onClick={openProfile}
+              >
+                👤 PROFILE & STATS
+              </button>
+
+              <button
+                className="daily-home-button"
+                onClick={() => setScreen("daily-start")}
+              >
+                🔥 DAILY CHALLENGE
+              </button>
+
               <button className="ghost" onClick={() => setScreen("how")}>
                 HOW TO PLAY
               </button>
@@ -846,6 +1241,273 @@ function App() {
     );
   }
 
+
+  // --------------------------------------------------
+  // PROFILE
+  // --------------------------------------------------
+
+  if (screen === "profile") {
+    const stats = profileSummary(profile);
+    const overall = stats.accuracy;
+
+    return (
+      <Shell>
+        <Card className="profile-card">
+          <div className="profile-header">
+            <div>
+              <span className="eyebrow">PLAYER PROFILE</span>
+              <h1>{profile.name || "Your Profile"}</h1>
+              <p>Your Tech Battle performance</p>
+            </div>
+            <div className="profile-avatar-large">
+              {(profile.name || "P").charAt(0).toUpperCase()}
+            </div>
+          </div>
+
+          <div className="profile-overall">
+            <div
+              className="accuracy-ring"
+              style={{ "--progress": `${overall}%` }}
+            >
+              <div className="accuracy-ring-inner">
+                <strong>{overall}%</strong>
+                <span>ACCURACY</span>
+              </div>
+            </div>
+            <div className="profile-overall-copy">
+              <span className="eyebrow">OVERALL PERFORMANCE</span>
+              <h2>{overall === 0 ? "Start at 0%" : `${overall}% overall accuracy`}</h2>
+              <p>
+                {stats.answered === 0
+                  ? "Play your first challenge to start building your statistics."
+                  : `${stats.correct} correct out of ${stats.answered} answered.`}
+              </p>
+            </div>
+          </div>
+
+          <div className="profile-stat-grid">
+            <div className="profile-stat-card"><span>GAMES</span><strong>{stats.gamesPlayed}</strong></div>
+            <div className="profile-stat-card"><span>DAILY CHALLENGES</span><strong>{stats.dailyChallenges}</strong></div>
+            <div className="profile-stat-card"><span>BEST SCORE</span><strong>{stats.highestScore}</strong></div>
+            <div className="profile-stat-card"><span>AVG. RESPONSE</span><strong>{stats.averageResponseTime}s</strong></div>
+            <div className="profile-stat-card"><span>DAILY STREAK</span><strong>🔥 {stats.currentDailyStreak}</strong></div>
+            <div className="profile-stat-card"><span>LONGEST STREAK</span><strong>{stats.longestDailyStreak}</strong></div>
+          </div>
+
+          <div className="profile-section-title">CATEGORY ACCURACY</div>
+          <div className="category-stat-list">
+            {PROFILE_CATEGORIES.map((key) => {
+              const bucket = profile.categories?.[key] || { answered: 0, correct: 0 };
+              const value = accuracyOf(bucket);
+              return (
+                <div className="category-stat-row" key={key}>
+                  <div className="category-stat-label">
+                    <span>{CATEGORY_LABELS[key] || key}</span>
+                    <strong>{value}%</strong>
+                  </div>
+                  <div className="category-stat-track">
+                    <div style={{ width: `${value}%` }} />
+                  </div>
+                  <small>{bucket.correct || 0}/{bucket.answered || 0} correct</small>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="profile-section-title">DIFFICULTY ACCURACY</div>
+          <div className="difficulty-stat-grid">
+            {[["easy", "🟢 Easy"], ["medium", "🟡 Medium"], ["hard", "🔴 Hard"]].map(([key, label]) => {
+              const bucket = profile.difficulties?.[key] || { answered: 0, correct: 0 };
+              return (
+                <div className="difficulty-stat-card" key={key}>
+                  <span>{label}</span>
+                  <strong>{accuracyOf(bucket)}%</strong>
+                  <small>{bucket.correct || 0}/{bucket.answered || 0}</small>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="profile-section-title">RECENT HISTORY</div>
+          <div className="profile-history">
+            {profile.history?.length ? profile.history.slice(0, 10).map((item) => (
+              <div className="history-row" key={item.id}>
+                <div>
+                  <strong>{item.type}</strong>
+                  <small>{new Date(item.date).toLocaleDateString()} • {item.accuracy}% accuracy</small>
+                </div>
+                <strong>{item.score} pts</strong>
+              </div>
+            )) : (
+              <div className="empty-profile">No matches yet. Your first result will appear here.</div>
+            )}
+          </div>
+
+          <div className="profile-actions">
+            <button onClick={() => setScreen("daily-start")}>🔥 Daily Challenge</button>
+            <button className="ghost" onClick={() => setScreen("home")}>← Back Home</button>
+          </div>
+        </Card>
+      </Shell>
+    );
+  }
+
+
+  // --------------------------------------------------
+  // DAILY START
+  // --------------------------------------------------
+
+  if (screen === "daily-start") {
+    const today = new Date().toLocaleDateString();
+    return (
+      <Shell>
+        <Card className="daily-card">
+          <div className="daily-hero">
+            <div className="daily-icon">🔥</div>
+            <span className="eyebrow">DAILY CHALLENGE</span>
+            <h1>Today's 10 Questions</h1>
+            <p>{today} • 4 Easy • 4 Medium • 2 Hard</p>
+          </div>
+
+          <div className="daily-feature-grid">
+            <div><strong>20s</strong><span>per question</span></div>
+            <div><strong>100+</strong><span>base points</span></div>
+            <div><strong>🔥</strong><span>streak bonus</span></div>
+          </div>
+
+          <label>
+            Player Name
+            <input
+              value={name || profile.name || ""}
+              maxLength={16}
+              placeholder="Enter your name"
+              onChange={(event) => setName(event.target.value)}
+            />
+          </label>
+
+          <button disabled={dailyBusy} onClick={startDailyChallenge}>
+            {dailyBusy ? "Starting..." : "Start Today's Challenge →"}
+          </button>
+
+          <button className="ghost" onClick={() => setScreen("profile")}>View Profile</button>
+          <button className="ghost" onClick={() => setScreen("home")}>← Back Home</button>
+        </Card>
+      </Shell>
+    );
+  }
+
+
+  // --------------------------------------------------
+  // DAILY QUESTION
+  // --------------------------------------------------
+
+  if (screen === "daily" && dailyQuestion) {
+    const progress = Math.max(0, Math.min(100, (dailyTimeRemaining / 20) * 100));
+
+    return (
+      <Shell>
+        <Card className="game-card daily-game-card">
+          <div className="game-top">
+            <div>
+              <span className="eyebrow">DAILY CHALLENGE • QUESTION {dailyQuestion.number} / {dailyQuestion.total}</span>
+              <div className="question-meta">
+                <span className="category-tag">{CATEGORY_LABELS[dailyQuestion.category] || dailyQuestion.category}</span>
+                <span className={`difficulty ${dailyQuestion.difficulty}`}>{DIFFICULTY_LABELS[dailyQuestion.difficulty]}</span>
+              </div>
+            </div>
+            <div className={`timer ${dailyTimeRemaining <= 5 ? "danger" : ""}`}>
+              {Math.ceil(dailyTimeRemaining)}<small>s</small>
+            </div>
+          </div>
+
+          <div className="timer-bar"><div style={{ width: `${progress}%` }} /></div>
+
+          <div className="question-area">
+            <h2>{dailyQuestion.text}</h2>
+            <div className="answers-grid">
+              {dailyQuestion.options.map((option, index) => (
+                <button
+                  key={index}
+                  disabled={dailySelectedAnswer !== null || dailyTimeRemaining <= 0}
+                  className={dailySelectedAnswer === index ? "answer selected" : "answer"}
+                  onClick={() => submitDailyAnswer(index)}
+                >
+                  <span className="option-letter">{String.fromCharCode(65 + index)}</span>
+                  <span>{option}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="daily-question-footer">
+            <span>🔥 Daily streak: {profile.currentDailyStreak}</span>
+            <span>Answer before time runs out</span>
+          </div>
+        </Card>
+      </Shell>
+    );
+  }
+
+
+  // --------------------------------------------------
+  // DAILY QUESTION RESULTS
+  // --------------------------------------------------
+
+  if (screen === "daily-results" && dailyQuestionResult) {
+    return (
+      <Shell>
+        <Card className="daily-card">
+          <div className={`daily-result-icon ${dailyQuestionResult.correct ? "correct" : "wrong"}`}>
+            {dailyQuestionResult.correct ? "✓" : "×"}
+          </div>
+          <span className="eyebrow">DAILY CHALLENGE</span>
+          <h1>{dailyQuestionResult.correct ? "Correct!" : "Not this time"}</h1>
+          <div className="correct-answer">{dailyQuestionResult.correctAnswer}</div>
+
+          <div className="daily-result-stats">
+            <div><span>POINTS</span><strong>+{dailyQuestionResult.points}</strong></div>
+            <div><span>SCORE</span><strong>{dailyQuestionResult.score}</strong></div>
+            <div><span>STREAK</span><strong>🔥 {dailyQuestionResult.streak}</strong></div>
+          </div>
+
+          <div className="next-question">Next daily question in 3 seconds...</div>
+        </Card>
+      </Shell>
+    );
+  }
+
+
+  // --------------------------------------------------
+  // DAILY FINAL
+  // --------------------------------------------------
+
+  if (screen === "daily-final" && dailyFinal) {
+    return (
+      <Shell>
+        <Card className="daily-card">
+          <div className="daily-final-trophy">🏆</div>
+          <span className="eyebrow">DAILY CHALLENGE COMPLETE</span>
+          <h1>{dailyFinal.score} POINTS</h1>
+          <p>{dailyFinal.correct}/{dailyFinal.answered} correct • {dailyFinal.performance?.accuracy || 0}% accuracy</p>
+
+          <div className="daily-streak-banner">
+            🔥 Daily streak: {profile.currentDailyStreak}
+          </div>
+
+          <div className="performance-overview">
+            <div className="performance-stat"><span>ACCURACY</span><strong>{dailyFinal.performance?.accuracy || 0}%</strong></div>
+            <div className="performance-stat"><span>CORRECT</span><strong>{dailyFinal.correct}/{dailyFinal.answered}</strong></div>
+            <div className="performance-stat"><span>AVG. TIME</span><strong>{dailyFinal.performance?.averageResponseTime || 0}s</strong></div>
+          </div>
+
+          <div className="profile-actions">
+            <button onClick={() => setScreen("profile")}>View My Stats</button>
+            <button className="ghost" onClick={() => setScreen("home")}>Return Home</button>
+          </div>
+        </Card>
+      </Shell>
+    );
+  }
 
   // --------------------------------------------------
   // HOW TO PLAY

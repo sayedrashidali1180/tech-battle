@@ -58,6 +58,7 @@ const QUIZBASE_API_KEY =
 const QUIZBASE_QUESTION_COUNT = 10;
 
 const rooms = new Map();
+const dailySessions = new Map();
 
 const ROOM_CHARACTERS =
   "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -2784,6 +2785,8 @@ async function startCountdown(room) {
 
   assignTeams(room);
 
+  room.matchId = randomId();
+
   let questions;
   let questionSource =
     "local-fallback";
@@ -3114,6 +3117,7 @@ function finishGame(room) {
     battleFormat: room.battleFormat,
     battleFormatLabel: getBattleConfig(room)?.label || room.battleFormat,
     matchSize: room.matchSize,
+    matchId: room.matchId || null,
     performanceByPlayer: Object.fromEntries(
       [...room.players.values()]
         .filter((player) => player.active)
@@ -3374,6 +3378,291 @@ function removePlayer(
   maybeDeleteEmptyRoom(
     room
   );
+}
+
+
+/* ============================================================
+   DAILY CHALLENGE
+============================================================ */
+
+function getDailyDateKey() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "UTC",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date());
+}
+
+function seededRandom(seed) {
+  let value = 2166136261;
+  for (let i = 0; i < seed.length; i++) {
+    value ^= seed.charCodeAt(i);
+    value = Math.imul(value, 16777619);
+  }
+  return function () {
+    value += value << 13;
+    value ^= value >>> 17;
+    value += value << 5;
+    value ^= value >>> 9;
+    return ((value >>> 0) % 1000000) / 1000000;
+  };
+}
+
+function seededShuffle(array, seed) {
+  const result = [...array];
+  const random = seededRandom(seed);
+
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+
+  return result;
+}
+
+function createDailyChallengeQuestions(dateKey) {
+  const difficulties = [
+    "easy", "easy", "easy", "easy",
+    "medium", "medium", "medium", "medium",
+    "hard", "hard"
+  ];
+
+  const selected = [];
+  const used = new Set();
+
+  difficulties.forEach((difficulty, index) => {
+    const candidates = QUESTION_BANK.filter(
+      (question) =>
+        question.difficulty === difficulty &&
+        !used.has(question.id)
+    );
+
+    if (!candidates.length) {
+      return;
+    }
+
+    const shuffled = seededShuffle(
+      candidates,
+      `${dateKey}-${difficulty}-${index}`
+    );
+
+    const question = shuffled[0];
+    used.add(question.id);
+    selected.push(shuffleQuestionOptions(question));
+  });
+
+  if (selected.length !== 10) {
+    throw new Error(
+      `Daily challenge could only create ${selected.length} questions.`
+    );
+  }
+
+  return seededShuffle(selected, `${dateKey}-final`);
+}
+
+function createDailySession(socket, name) {
+  const dateKey = getDailyDateKey();
+  const questions = createDailyChallengeQuestions(dateKey);
+
+  const session = {
+    id: randomId(),
+    dateKey,
+    name,
+    socketId: socket.id,
+    questions,
+    currentQuestionIndex: 0,
+    questionStartedAt: null,
+    questionEndsAt: null,
+    answers: [],
+    score: 0,
+    streak: 0,
+    bestStreak: 0,
+    correct: 0,
+    answered: 0,
+    responseTimeMs: 0,
+    byCategory: {},
+    byDifficulty: {},
+    timer: null,
+    resultsTimer: null
+  };
+
+  dailySessions.set(socket.id, session);
+  return session;
+}
+
+function clearDailySession(socketId) {
+  const session = dailySessions.get(socketId);
+  if (!session) return;
+
+  if (session.timer) clearTimeout(session.timer);
+  if (session.resultsTimer) clearTimeout(session.resultsTimer);
+  dailySessions.delete(socketId);
+}
+
+function getDailyBucket(container, key) {
+  if (!container[key]) {
+    container[key] = {
+      answered: 0,
+      correct: 0,
+      responseTimeMs: 0
+    };
+  }
+  return container[key];
+}
+
+function safeDailyQuestion(session) {
+  const question = session.questions[session.currentQuestionIndex];
+  if (!question) return null;
+
+  return {
+    id: question.id,
+    number: session.currentQuestionIndex + 1,
+    total: session.questions.length,
+    category: question.category,
+    difficulty: question.difficulty,
+    text: question.text,
+    options: question.options,
+    endsAt: session.questionEndsAt,
+    answeredCount: session.answered
+  };
+}
+
+function getDailyPerformance(session) {
+  const byCategory = Object.entries(session.byCategory).map(([key, bucket]) => ({
+    key,
+    answered: bucket.answered,
+    correct: bucket.correct,
+    accuracy: bucket.answered
+      ? Math.round((bucket.correct / bucket.answered) * 100)
+      : 0
+  }));
+
+  const byDifficulty = Object.entries(session.byDifficulty).map(([key, bucket]) => ({
+    key,
+    answered: bucket.answered,
+    correct: bucket.correct,
+    accuracy: bucket.answered
+      ? Math.round((bucket.correct / bucket.answered) * 100)
+      : 0
+  }));
+
+  return {
+    answered: session.answered,
+    correct: session.correct,
+    wrong: session.answered - session.correct,
+    accuracy: session.answered
+      ? Math.round((session.correct / session.answered) * 100)
+      : 0,
+    averageResponseTime: session.answered
+      ? Number((session.responseTimeMs / session.answered / 1000).toFixed(1))
+      : 0,
+    byCategory,
+    byDifficulty
+  };
+}
+
+function emitDailyQuestion(session) {
+  const socket = io.sockets.sockets.get(session.socketId);
+  if (!socket) return;
+
+  session.questionStartedAt = Date.now();
+  session.questionEndsAt = session.questionStartedAt + QUESTION_TIME;
+
+  socket.emit("daily_question", safeDailyQuestion(session));
+
+  session.timer = setTimeout(() => finishDailyQuestion(session), QUESTION_TIME);
+}
+
+function finishDailyQuestion(session) {
+  if (!dailySessions.has(session.socketId)) return;
+
+  if (session.timer) {
+    clearTimeout(session.timer);
+    session.timer = null;
+  }
+
+  const question = session.questions[session.currentQuestionIndex];
+  const answer = session.answers[session.currentQuestionIndex] || null;
+  const responseTimeMs = answer?.at
+    ? Math.max(0, Math.min(QUESTION_TIME, answer.at - session.questionStartedAt))
+    : QUESTION_TIME;
+
+  const correct = Boolean(
+    answer && answer.index === question.correctIndex
+  );
+
+  let points = 0;
+
+  if (correct) {
+    const remaining = Math.max(0, session.questionEndsAt - answer.at);
+    const speedBonus = 50 * (remaining / QUESTION_TIME);
+    const streakBonus = Math.min(STREAK_BONUS_CAP, session.streak * STREAK_BONUS_PER_STEP);
+    points = Math.round(100 + speedBonus + streakBonus);
+    session.streak++;
+    session.bestStreak = Math.max(session.bestStreak, session.streak);
+    session.correct++;
+  } else {
+    session.streak = 0;
+  }
+
+  session.answered++;
+  session.score += points;
+  session.responseTimeMs += responseTimeMs;
+
+  const category = getDailyBucket(session.byCategory, question.category || "unknown");
+  category.answered++;
+  category.responseTimeMs += responseTimeMs;
+  if (correct) category.correct++;
+
+  const difficulty = getDailyBucket(session.byDifficulty, question.difficulty || "unknown");
+  difficulty.answered++;
+  difficulty.responseTimeMs += responseTimeMs;
+  if (correct) difficulty.correct++;
+
+  const socket = io.sockets.sockets.get(session.socketId);
+  if (socket) {
+    socket.emit("daily_question_result", {
+      questionNumber: session.currentQuestionIndex + 1,
+      correctAnswer: question.options[question.correctIndex],
+      correct,
+      points,
+      score: session.score,
+      streak: session.streak,
+      performance: getDailyPerformance(session)
+    });
+  }
+
+  if (session.currentQuestionIndex >= session.questions.length - 1) {
+    session.resultsTimer = setTimeout(() => finishDailyChallenge(session), RESULTS_TIME);
+    return;
+  }
+
+  session.resultsTimer = setTimeout(() => {
+    session.currentQuestionIndex++;
+    emitDailyQuestion(session);
+  }, RESULTS_TIME);
+}
+
+function finishDailyChallenge(session) {
+  if (!dailySessions.has(session.socketId)) return;
+
+  const socket = io.sockets.sockets.get(session.socketId);
+  const performance = getDailyPerformance(session);
+
+  if (socket) {
+    socket.emit("daily_finished", {
+      attemptId: session.id,
+      dateKey: session.dateKey,
+      score: session.score,
+      correct: session.correct,
+      answered: session.answered,
+      bestStreak: session.bestStreak,
+      performance
+    });
+  }
+
+  clearDailySession(session.socketId);
 }
 
 /* ============================================================
@@ -3847,6 +4136,73 @@ io.on(
         );
       }
     );
+
+
+    /* ========================================================
+       DAILY CHALLENGE
+    ======================================================== */
+
+    socket.on("daily_start", (payload, callback) => {
+      const name = cleanName(payload?.name) || "Player";
+
+      clearDailySession(socket.id);
+
+      try {
+        const session = createDailySession(socket, name);
+        callback?.({
+          ok: true,
+          attemptId: session.id,
+          dateKey: session.dateKey,
+          name: session.name
+        });
+        emitDailyQuestion(session);
+      } catch (error) {
+        console.error(`[Daily Challenge] ${error.message}`);
+        callback?.({
+          error: "Unable to create today's daily challenge."
+        });
+      }
+    });
+
+    socket.on("daily_answer", (payload, callback) => {
+      const session = dailySessions.get(socket.id);
+
+      if (!session) {
+        return callback?.({ error: "No active daily challenge." });
+      }
+
+      if (session.questionEndsAt && Date.now() > session.questionEndsAt) {
+        return callback?.({ error: "Time is up." });
+      }
+
+      const question = session.questions[session.currentQuestionIndex];
+      const index = Number(payload?.index);
+
+      if (!question || payload?.questionId !== question.id) {
+        return callback?.({ error: "This question is no longer current." });
+      }
+
+      if (!Number.isInteger(index) || index < 0 || index >= question.options.length) {
+        return callback?.({ error: "Invalid answer." });
+      }
+
+      if (session.answers[session.currentQuestionIndex]) {
+        return callback?.({ error: "You already answered this question." });
+      }
+
+      session.answers[session.currentQuestionIndex] = {
+        index,
+        at: Date.now()
+      };
+
+      callback?.({ ok: true });
+      finishDailyQuestion(session);
+    });
+
+    socket.on("daily_leave", (payload, callback) => {
+      clearDailySession(socket.id);
+      callback?.({ ok: true });
+    });
 
     /* ========================================================
        START GAME
@@ -4338,6 +4694,7 @@ io.on(
     socket.on(
       "disconnect",
       () => {
+        clearDailySession(socket.id);
         console.log(
           `Socket disconnected: ${socket.id}`
         );
@@ -4779,6 +5136,7 @@ function getApiData() {
     environment: process.env.NODE_ENV || "production",
     players: { minimum: MIN_PLAYERS, maximum: MAX_PLAYERS },
     questions: 10,
+    dailyChallenge: true,
     questionTime: QUESTION_TIME,
     matchSizes: MATCH_SIZES,
     battleFormats: formatsList(),
@@ -4821,11 +5179,13 @@ function getDocsData() {
     quizTypes: quizTypesList(),
     clientEvents: [
       "time_sync", "create_room", "join_room", "reconnect_player",
-      "start_game", "use_powerup", "submit_answer", "play_again", "leave_game"
+      "start_game", "use_powerup", "submit_answer", "play_again", "leave_game",
+      "daily_start", "daily_answer", "daily_leave"
     ],
     serverEvents: [
       "room_state", "countdown", "question", "answer_count", "question_results",
-      "game_finished", "leaderboard_update", "battle_intro"
+      "game_finished", "leaderboard_update", "battle_intro",
+      "daily_question", "daily_question_result", "daily_finished"
     ]
   };
 }
@@ -4950,6 +5310,7 @@ httpServer.listen(PORT, "0.0.0.0", () => {
   console.log(`Health: http://localhost:${PORT}/health`);
   console.log("Socket.IO multiplayer: ENABLED");
   console.log("Quiz types: ENABLED");
+  console.log("Daily challenge: ENABLED");
   console.log(
     `QuizBase API: ${
       QUIZBASE_API_KEY
