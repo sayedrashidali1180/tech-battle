@@ -34,8 +34,35 @@ async function initializeDatabase() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+  await dbPool.query(`
+    CREATE TABLE IF NOT EXISTS match_history (
+      profile_id VARCHAR(80) NOT NULL,
+      match_id VARCHAR(120) NOT NULL,
+      record JSONB NOT NULL DEFAULT '{}'::jsonb,
+      played_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (profile_id, match_id)
+    )
+  `);
+  await dbPool.query(`
+    CREATE INDEX IF NOT EXISTS match_history_profile_played_idx
+    ON match_history (profile_id, played_at DESC)
+  `);
+  await dbPool.query(`
+    CREATE TABLE IF NOT EXISTS daily_challenge_attempts (
+      profile_id VARCHAR(80) NOT NULL,
+      attempt_id VARCHAR(120) NOT NULL,
+      date_key DATE NOT NULL,
+      record JSONB NOT NULL DEFAULT '{}'::jsonb,
+      completed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (profile_id, attempt_id)
+    )
+  `);
+  await dbPool.query(`
+    CREATE INDEX IF NOT EXISTS daily_attempts_profile_date_idx
+    ON daily_challenge_attempts (profile_id, date_key DESC)
+  `);
   databaseReady = true;
-  console.log("[Database] PostgreSQL connected; player_profiles table is ready.");
+  console.log("[Database] PostgreSQL ready: profiles, match history, daily attempts.");
 }
 
 
@@ -5274,6 +5301,113 @@ app.put("/api/profiles/:profileId", async (req, res) => {
   } catch (error) {
     console.error("[Database] Profile save failed:", error.message);
     return res.status(500).json({ error: "Unable to save profile." });
+  }
+});
+
+app.post("/api/profiles/:profileId/matches", async (req, res) => {
+  const profileId = String(req.params.profileId || "");
+  if (!/^[a-zA-Z0-9_-]{16,80}$/.test(profileId)) {
+    return res.status(400).json({ error: "Invalid profile ID." });
+  }
+  if (!dbPool || !databaseReady) {
+    return res.status(503).json({ error: "Database persistence is not available." });
+  }
+  const record = req.body?.record;
+  const matchId = String(record?.matchId || "");
+  if (!record || typeof record !== "object" || Array.isArray(record) || !matchId || matchId.length > 120) {
+    return res.status(400).json({ error: "A valid match record with matchId is required." });
+  }
+  if (JSON.stringify(record).length > 50000) {
+    return res.status(413).json({ error: "Match record is too large." });
+  }
+  try {
+    const result = await dbPool.query(
+      `INSERT INTO match_history (profile_id, match_id, record)
+       VALUES ($1, $2, $3::jsonb)
+       ON CONFLICT (profile_id, match_id) DO NOTHING
+       RETURNING match_id`,
+      [profileId, matchId, JSON.stringify(record)]
+    );
+    return res.json({ ok: true, saved: true, inserted: result.rowCount === 1 });
+  } catch (error) {
+    console.error("[Database] Match history save failed:", error.message);
+    return res.status(500).json({ error: "Unable to save match history." });
+  }
+});
+
+app.get("/api/profiles/:profileId/matches", async (req, res) => {
+  const profileId = String(req.params.profileId || "");
+  if (!/^[a-zA-Z0-9_-]{16,80}$/.test(profileId)) {
+    return res.status(400).json({ error: "Invalid profile ID." });
+  }
+  if (!dbPool || !databaseReady) {
+    return res.status(503).json({ error: "Database persistence is not available." });
+  }
+  try {
+    const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 30));
+    const result = await dbPool.query(
+      `SELECT record, played_at FROM match_history
+       WHERE profile_id = $1 ORDER BY played_at DESC LIMIT $2`,
+      [profileId, limit]
+    );
+    return res.json({ matches: result.rows.map((row) => ({ ...row.record, playedAt: row.played_at })) });
+  } catch (error) {
+    console.error("[Database] Match history read failed:", error.message);
+    return res.status(500).json({ error: "Unable to load match history." });
+  }
+});
+
+app.post("/api/profiles/:profileId/daily-attempts", async (req, res) => {
+  const profileId = String(req.params.profileId || "");
+  if (!/^[a-zA-Z0-9_-]{16,80}$/.test(profileId)) {
+    return res.status(400).json({ error: "Invalid profile ID." });
+  }
+  if (!dbPool || !databaseReady) {
+    return res.status(503).json({ error: "Database persistence is not available." });
+  }
+  const record = req.body?.record;
+  const attemptId = String(record?.attemptId || "");
+  const dateKey = String(record?.dateKey || "");
+  if (!record || typeof record !== "object" || Array.isArray(record) || !attemptId || attemptId.length > 120 || !/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) {
+    return res.status(400).json({ error: "A valid daily attempt record is required." });
+  }
+  if (JSON.stringify(record).length > 50000) {
+    return res.status(413).json({ error: "Daily attempt record is too large." });
+  }
+  try {
+    const result = await dbPool.query(
+      `INSERT INTO daily_challenge_attempts (profile_id, attempt_id, date_key, record)
+       VALUES ($1, $2, $3::date, $4::jsonb)
+       ON CONFLICT (profile_id, attempt_id) DO NOTHING
+       RETURNING attempt_id`,
+      [profileId, attemptId, dateKey, JSON.stringify(record)]
+    );
+    return res.json({ ok: true, saved: true, inserted: result.rowCount === 1 });
+  } catch (error) {
+    console.error("[Database] Daily attempt save failed:", error.message);
+    return res.status(500).json({ error: "Unable to save daily attempt." });
+  }
+});
+
+app.get("/api/profiles/:profileId/daily-attempts", async (req, res) => {
+  const profileId = String(req.params.profileId || "");
+  if (!/^[a-zA-Z0-9_-]{16,80}$/.test(profileId)) {
+    return res.status(400).json({ error: "Invalid profile ID." });
+  }
+  if (!dbPool || !databaseReady) {
+    return res.status(503).json({ error: "Database persistence is not available." });
+  }
+  try {
+    const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 30));
+    const result = await dbPool.query(
+      `SELECT record, completed_at FROM daily_challenge_attempts
+       WHERE profile_id = $1 ORDER BY completed_at DESC LIMIT $2`,
+      [profileId, limit]
+    );
+    return res.json({ attempts: result.rows.map((row) => ({ ...row.record, completedAt: row.completed_at })) });
+  } catch (error) {
+    console.error("[Database] Daily attempt history read failed:", error.message);
+    return res.status(500).json({ error: "Unable to load daily attempt history." });
   }
 });
 
