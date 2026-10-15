@@ -3,6 +3,41 @@ import cors from "cors";
 import { createServer } from "http";
 import { Server } from "socket.io";
 import crypto from "crypto";
+import pg from "pg";
+
+const { Pool } = pg;
+
+// PostgreSQL is optional for local development. On Render, set DATABASE_URL.
+const dbPool = process.env.DATABASE_URL
+  ? new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === "production"
+        ? { rejectUnauthorized: false }
+        : false,
+      max: 5,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 10000
+    })
+  : null;
+
+let databaseReady = false;
+async function initializeDatabase() {
+  if (!dbPool) {
+    console.log("[Database] DATABASE_URL not set; profile persistence is disabled.");
+    return;
+  }
+  await dbPool.query(`
+    CREATE TABLE IF NOT EXISTS player_profiles (
+      profile_id VARCHAR(80) PRIMARY KEY,
+      profile JSONB NOT NULL DEFAULT '{}'::jsonb,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  databaseReady = true;
+  console.log("[Database] PostgreSQL connected; player_profiles table is ready.");
+}
+
 
 const app = express();
 
@@ -5190,6 +5225,62 @@ function getDocsData() {
   };
 }
 
+/* ---------- PHASE 3 PROFILE PERSISTENCE ---------- */
+app.get("/api/profiles/:profileId", async (req, res) => {
+  const profileId = String(req.params.profileId || "");
+  if (!/^[a-zA-Z0-9_-]{16,80}$/.test(profileId)) {
+    return res.status(400).json({ error: "Invalid profile ID." });
+  }
+  if (!dbPool || !databaseReady) {
+    return res.status(503).json({ error: "Database persistence is not available." });
+  }
+  try {
+    const result = await dbPool.query(
+      "SELECT profile FROM player_profiles WHERE profile_id = $1",
+      [profileId]
+    );
+    if (!result.rowCount) return res.status(404).json({ error: "Profile not found." });
+    return res.json({ profile: result.rows[0].profile });
+  } catch (error) {
+    console.error("[Database] Profile read failed:", error.message);
+    return res.status(500).json({ error: "Unable to load profile." });
+  }
+});
+
+app.put("/api/profiles/:profileId", async (req, res) => {
+  const profileId = String(req.params.profileId || "");
+  if (!/^[a-zA-Z0-9_-]{16,80}$/.test(profileId)) {
+    return res.status(400).json({ error: "Invalid profile ID." });
+  }
+  if (!dbPool || !databaseReady) {
+    return res.status(503).json({ error: "Database persistence is not available." });
+  }
+  const profile = req.body?.profile;
+  if (!profile || typeof profile !== "object" || Array.isArray(profile)) {
+    return res.status(400).json({ error: "A valid profile object is required." });
+  }
+  if (JSON.stringify(profile).length > 100000) {
+    return res.status(413).json({ error: "Profile data is too large." });
+  }
+  try {
+    await dbPool.query(
+      `INSERT INTO player_profiles (profile_id, profile, updated_at)
+       VALUES ($1, $2::jsonb, NOW())
+       ON CONFLICT (profile_id)
+       DO UPDATE SET profile = EXCLUDED.profile, updated_at = NOW()`,
+      [profileId, JSON.stringify(profile)]
+    );
+    return res.json({ ok: true, saved: true });
+  } catch (error) {
+    console.error("[Database] Profile save failed:", error.message);
+    return res.status(500).json({ error: "Unable to save profile." });
+  }
+});
+
+app.get("/api/database-status", (req, res) => {
+  res.json({ configured: Boolean(dbPool), ready: databaseReady });
+});
+
 /* ---------- API STATUS ---------- */
 app.get("/health", (req, res) => {
   const data = getHealthData();
@@ -5301,6 +5392,12 @@ app.get("/docs", (req, res) => {
 /* ============================================================
    START SERVER
 ============================================================ */
+
+initializeDatabase().catch((error) => {
+  databaseReady = false;
+  console.error("[Database] PostgreSQL initialization failed:", error.message);
+  console.error("[Database] Server will continue running; profile persistence is unavailable until the database is fixed.");
+});
 
 httpServer.listen(PORT, "0.0.0.0", () => {
   console.log("======================================");

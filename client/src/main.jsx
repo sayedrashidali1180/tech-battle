@@ -97,6 +97,45 @@ const BATTLE_FORMATS = {
 
 
 const PROFILE_KEY = "techBattleProfile";
+const PROFILE_ID_KEY = "techBattleProfileId";
+
+function getStableProfileId() {
+  let id = localStorage.getItem(PROFILE_ID_KEY);
+  if (!id) {
+    id = `tb_${crypto.randomUUID().replaceAll("-", "")}`;
+    localStorage.setItem(PROFILE_ID_KEY, id);
+  }
+  return id;
+}
+
+async function loadRemoteProfile() {
+  try {
+    const id = getStableProfileId();
+    const response = await fetch(`${SERVER_URL}/api/profiles/${encodeURIComponent(id)}`);
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data?.profile && typeof data.profile === "object" ? data.profile : null;
+  } catch {
+    return null;
+  }
+}
+
+async function saveRemoteProfile(profile) {
+  try {
+    const id = getStableProfileId();
+    const response = await fetch(`${SERVER_URL}/api/profiles/${encodeURIComponent(id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ profile })
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      console.warn("Tech Battle profile was saved locally but not remotely:", data.error || response.status);
+    }
+  } catch (error) {
+    console.warn("Tech Battle profile was saved locally but not remotely:", error?.message || error);
+  }
+}
 
 const PROFILE_CATEGORIES = [
   "aptitude",
@@ -152,7 +191,13 @@ function loadProfile() {
 }
 
 function saveProfile(profile) {
-  localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  try {
+    localStorage.setItem(PROFILE_KEY, JSON.stringify(profile));
+  } catch (error) {
+    console.warn("Could not save profile locally:", error?.message || error);
+  }
+  // Remote persistence is best-effort; gameplay never waits on the database.
+  void saveRemoteProfile(profile);
 }
 
 function accuracyOf(bucket) {
@@ -369,6 +414,33 @@ function App() {
   useEffect(() => { meRef.current = me; }, [me]);
   useEffect(() => { roomRef.current = room; }, [room]);
   useEffect(() => { nameRef.current = name; }, [name]);
+
+  // Restore the server-backed profile on startup. If the database has no
+  // profile yet, retain this browser's local profile and upload it once.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const remote = await loadRemoteProfile();
+      if (cancelled) return;
+      if (remote) {
+        const normalized = {
+          ...createEmptyProfile(),
+          ...remote,
+          categories: remote.categories || {},
+          difficulties: remote.difficulties || {},
+          history: Array.isArray(remote.history) ? remote.history : []
+        };
+        setProfile(normalized);
+        try { localStorage.setItem(PROFILE_KEY, JSON.stringify(normalized)); } catch {}
+      } else {
+        const local = loadProfile();
+        if (local.history.length || local.answered || local.gamesPlayed || local.dailyChallenges) {
+          void saveRemoteProfile(local);
+        }
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
 
   // --------------------------------------------------
