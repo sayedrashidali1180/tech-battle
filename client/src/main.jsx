@@ -148,6 +148,29 @@ async function saveRemoteProfile(profile) {
   }
 }
 
+async function saveRemoteRecord(kind, record) {
+  try {
+    const id = getStableProfileId();
+    const endpoint = kind === "daily"
+      ? "daily-attempts"
+      : "matches";
+    const response = await fetch(
+      `${SERVER_URL}/api/profiles/${encodeURIComponent(id)}/${endpoint}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ record })
+      }
+    );
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      console.warn(`Tech Battle ${kind} history was not saved remotely:`, data.error || response.status);
+    }
+  } catch (error) {
+    console.warn(`Tech Battle ${kind} history was not saved remotely:`, error?.message || error);
+  }
+}
+
 const PROFILE_CATEGORIES = [
   "aptitude",
   "reasoning",
@@ -619,6 +642,23 @@ function App() {
       const myPerformance = data?.performanceByPlayer?.[currentMe?.id];
 
       if (myPerformance && data?.matchId) {
+        void saveRemoteRecord("match", {
+          matchId: data.matchId,
+          date: new Date().toISOString(),
+          playerName: currentMe?.name || "Player",
+          score: myPlayer?.total || 0,
+          quizType: currentRoom?.quizType || "",
+          difficulty: currentRoom?.difficulty || "",
+          battleFormat: data.battleFormat || currentRoom?.battleFormat || "",
+          matchSize: data.matchSize || currentRoom?.matchSize || null,
+          performance: myPerformance,
+          leaderboard: (data.leaderboard || []).map((player) => ({
+            name: player.name,
+            score: player.total,
+            rank: player.rank,
+            teamName: player.teamName || null
+          }))
+        });
         setProfile((current) => {
           if ((current.history || []).some((item) => item.id === data.matchId)) {
             return current;
@@ -661,6 +701,17 @@ function App() {
 
     const handleDailyFinished = (data) => {
       setDailyFinal(data);
+      void saveRemoteRecord("daily", {
+        attemptId: data.attemptId,
+        dateKey: data.dateKey,
+        completedAt: new Date().toISOString(),
+        playerName: nameRef.current || profile.name || "Player",
+        score: data.score,
+        correct: data.correct,
+        answered: data.answered,
+        bestStreak: data.bestStreak,
+        performance: data.performance
+      });
 
       setProfile((current) => {
         if ((current.history || []).some((item) => item.id === data.attemptId)) {
