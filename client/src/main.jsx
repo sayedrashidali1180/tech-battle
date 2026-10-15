@@ -98,6 +98,17 @@ const BATTLE_FORMATS = {
 
 const PROFILE_KEY = "techBattleProfile";
 const PROFILE_ID_KEY = "techBattleProfileId";
+const SCREEN_KEY = "techBattleLastScreen";
+
+function getInitialScreen() {
+  try {
+    // Restore only the Profile screen. Temporary screens (questions, results,
+    // countdowns, and room setup) should not be replayed after a page refresh.
+    return sessionStorage.getItem(SCREEN_KEY) === "profile" ? "profile" : "home";
+  } catch {
+    return "home";
+  }
+}
 
 function getStableProfileId() {
   let id = localStorage.getItem(PROFILE_ID_KEY);
@@ -329,7 +340,7 @@ function applyDailyStreak(profile) {
 // --------------------------------------------------
 
 function App() {
-  const [screen, setScreen] = useState("home");
+  const [screen, setScreen] = useState(getInitialScreen);
 
   const [mode, setMode] = useState(null);
 
@@ -410,6 +421,21 @@ function App() {
   const [dailySelectedAnswer, setDailySelectedAnswer] = useState(null);
   const [dailyTimeRemaining, setDailyTimeRemaining] = useState(20);
   const [dailyBusy, setDailyBusy] = useState(false);
+
+  // Remember the Profile page across refreshes, but never persist temporary
+  // gameplay screens. Existing socket/session restoration remains in control
+  // when a player refreshes while in a multiplayer room.
+  useEffect(() => {
+    try {
+      if (screen === "profile") {
+        sessionStorage.setItem(SCREEN_KEY, "profile");
+      } else {
+        sessionStorage.removeItem(SCREEN_KEY);
+      }
+    } catch {
+      // The app still works if browser session storage is unavailable.
+    }
+  }, [screen]);
 
   useEffect(() => { meRef.current = me; }, [me]);
   useEffect(() => { roomRef.current = room; }, [room]);
