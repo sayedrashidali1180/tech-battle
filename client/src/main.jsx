@@ -1466,8 +1466,31 @@ function App() {
         <div className="auth-page">
           <div className="auth-glow auth-glow-one" />
           <div className="auth-glow auth-glow-two" />
-          <section className="auth-card">
-            <div className="auth-brand-mark">⚡</div>
+          <div className="auth-layout">
+            <aside className="auth-showcase">
+              <div className="auth-showcase-brand">
+                <div className="auth-brand-mark">⚡</div>
+                <span>TECH <strong>BATTLE</strong></span>
+              </div>
+              <div className="auth-showcase-copy">
+                <div className="auth-showcase-kicker"><span className="auth-live-dot" /> REAL-TIME MULTIPLAYER QUIZ</div>
+                <h2>Think fast.<br /><span>Play smart.</span><br />Own the arena.</h2>
+                <p>Challenge your friends, climb the leaderboard, and sharpen your skills one battle at a time.</p>
+              </div>
+              <div className="auth-feature-list">
+                <div className="auth-feature"><span>⚔</span><div><strong>Live multiplayer battles</strong><small>Compete with friends in real time</small></div></div>
+                <div className="auth-feature"><span>🏆</span><div><strong>Track your progress</strong><small>Build your stats and earn your rank</small></div></div>
+                <div className="auth-feature"><span>⚡</span><div><strong>Daily challenges</strong><small>Keep your streak alive every day</small></div></div>
+              </div>
+              <div className="auth-showcase-foot">READY PLAYER ONE? YOUR NEXT BATTLE STARTS HERE.</div>
+            </aside>
+            <section className="auth-card">
+              <div className="auth-mobile-brand">⚡ <span>TECH <strong>BATTLE</strong></span></div>
+              <div className="auth-card-heading">
+                <div className="auth-eyebrow">YOUR NEXT MATCH STARTS HERE</div>
+                <h1>{authView === "signup" ? "Create account" : "Welcome back"}</h1>
+                <p className="auth-subtitle">{authView === "signup" ? "Create your player identity and join the battle." : "Sign in to pick up where your battles left off."}</p>
+              </div>
             <div className="auth-eyebrow">REAL-TIME MULTIPLAYER QUIZ</div>
             <h1>TECH <span>BATTLE</span></h1>
             <p className="auth-subtitle">Enter the arena. Challenge your friends. Prove your skills.</p>
@@ -1496,7 +1519,8 @@ function App() {
             </form>
             <p className="auth-switch">{authView === "signup" ? "Already have an account?" : "New to Tech Battle?"} <button type="button" onClick={() => { setAuthView(authView === "signup" ? "login" : "signup"); setAuthError(""); }}>{authView === "signup" ? "Log in" : "Create account"}</button></p>
             <p className="auth-terms">Your progress, match history, and daily challenges will be linked to your account.</p>
-          </section>
+            </section>
+          </div>
         </div>
       </Shell>
     );
