@@ -71,6 +71,21 @@ async function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS question_usage_last_used_idx
     ON question_usage (last_used_at DESC)
   `);
+  await dbPool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      user_id VARCHAR(80) PRIMARY KEY,
+      profile_id VARCHAR(80) NOT NULL UNIQUE,
+      email VARCHAR(254) NOT NULL UNIQUE,
+      username VARCHAR(16) NOT NULL UNIQUE,
+      full_name VARCHAR(80) NOT NULL,
+      password_salt TEXT,
+      password_hash TEXT,
+      google_sub VARCHAR(255) UNIQUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await dbPool.query(`CREATE INDEX IF NOT EXISTS users_email_lower_idx ON users (LOWER(email))`);
   databaseReady = true;
   console.log("[Database] PostgreSQL ready: profiles, match history, daily attempts, question usage.");
 }
@@ -5322,12 +5337,181 @@ function getDocsData() {
   };
 }
 
+/* ---------- ACCOUNT AUTHENTICATION ---------- */
+const AUTH_SECRET = process.env.AUTH_SECRET || crypto.randomBytes(48).toString("hex");
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID || "";
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_RE = /^[A-Za-z0-9_]{3,16}$/;
+const scryptAsync = (password, salt) => new Promise((resolve, reject) => {
+  crypto.scrypt(password, salt, 64, (error, key) => error ? reject(error) : resolve(key.toString("hex")));
+});
+function authTokenFor(user) {
+  const payload = Buffer.from(JSON.stringify({
+    sub: user.user_id, profileId: user.profile_id, email: user.email,
+    username: user.username, name: user.full_name, exp: Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 7
+  })).toString("base64url");
+  const signature = crypto.createHmac("sha256", AUTH_SECRET).update(payload).digest("base64url");
+  return `${payload}.${signature}`;
+}
+function verifyAuthToken(token) {
+  try {
+    const [payload, signature] = String(token || "").split(".");
+    if (!payload || !signature) return null;
+    const expected = crypto.createHmac("sha256", AUTH_SECRET).update(payload).digest();
+    const actual = Buffer.from(signature, "base64url");
+    if (actual.length !== expected.length || !crypto.timingSafeEqual(actual, expected)) return null;
+    const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    if (!decoded.exp || decoded.exp < Math.floor(Date.now() / 1000)) return null;
+    return decoded;
+  } catch { return null; }
+}
+function getAuthFromRequest(req) {
+  const value = String(req.headers.authorization || "");
+  return value.startsWith("Bearer ") ? verifyAuthToken(value.slice(7)) : null;
+}
+async function ensureDatabaseForAuth(res) {
+  if (!dbPool || !databaseReady) {
+    res.status(503).json({ error: "Account service is unavailable because PostgreSQL is not ready." });
+    return false;
+  }
+  return true;
+}
+function publicUser(row) {
+  return { id: row.user_id, profileId: row.profile_id, email: row.email, username: row.username, name: row.full_name };
+}
+async function makeAccountSession(row, res) {
+  return res.json({ ok: true, token: authTokenFor(row), user: publicUser(row) });
+}
+app.post("/api/auth/signup", async (req, res) => {
+  if (!(await ensureDatabaseForAuth(res))) return;
+  const name = String(req.body?.name || "").trim().replace(/\s+/g, " ");
+  const username = String(req.body?.username || "").trim();
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const password = String(req.body?.password || "");
+  if (name.length < 2 || name.length > 80) return res.status(400).json({ error: "Full name must be 2–80 characters." });
+  if (!USERNAME_RE.test(username)) return res.status(400).json({ error: "Username must be 3–16 letters, numbers, or underscores." });
+  if (!EMAIL_RE.test(email) || email.length > 254) return res.status(400).json({ error: "Enter a valid email address." });
+  if (password.length < 8 || password.length > 200) return res.status(400).json({ error: "Password must contain at least 8 characters." });
+  try {
+    const existing = await dbPool.query("SELECT 1 FROM users WHERE LOWER(email) = LOWER($1) OR LOWER(username) = LOWER($2) LIMIT 1", [email, username]);
+    if (existing.rowCount) return res.status(409).json({ error: "That email or username is already registered." });
+    const salt = crypto.randomBytes(16).toString("hex");
+    const passwordHash = await scryptAsync(password, salt);
+    const userId = `usr_${crypto.randomBytes(18).toString("hex")}`;
+    const profileId = `tb_${crypto.randomBytes(20).toString("hex")}`;
+    const result = await dbPool.query(
+      `INSERT INTO users (user_id, profile_id, email, username, full_name, password_salt, password_hash)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING user_id, profile_id, email, username, full_name`,
+      [userId, profileId, email, username, name, salt, passwordHash]
+    );
+    await dbPool.query("INSERT INTO player_profiles (profile_id, profile) VALUES ($1, $2::jsonb) ON CONFLICT (profile_id) DO NOTHING", [profileId, JSON.stringify({ version: 1, name: username, gamesPlayed: 0, dailyChallenges: 0, answered: 0, correct: 0, score: 0, highestScore: 0, categories: {}, difficulties: {}, history: [] })]);
+    return makeAccountSession(result.rows[0], res);
+  } catch (error) {
+    if (error.code === "23505") return res.status(409).json({ error: "That email or username is already registered." });
+    console.error("[Auth] Signup failed:", error.message);
+    return res.status(500).json({ error: "Unable to create account right now." });
+  }
+});
+app.post("/api/auth/login", async (req, res) => {
+  if (!(await ensureDatabaseForAuth(res))) return;
+  const email = String(req.body?.email || "").trim().toLowerCase();
+  const password = String(req.body?.password || "");
+  if (!EMAIL_RE.test(email) || !password) return res.status(400).json({ error: "Enter your email and password." });
+  try {
+    const result = await dbPool.query("SELECT user_id, profile_id, email, username, full_name, password_salt, password_hash FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1", [email]);
+    const row = result.rows[0];
+    if (!row?.password_salt || !row?.password_hash) return res.status(401).json({ error: "Incorrect email or password." });
+    const check = Buffer.from(await scryptAsync(password, row.password_salt), "hex");
+    const stored = Buffer.from(row.password_hash, "hex");
+    if (check.length !== stored.length || !crypto.timingSafeEqual(check, stored)) return res.status(401).json({ error: "Incorrect email or password." });
+    return makeAccountSession(row, res);
+  } catch (error) {
+    console.error("[Auth] Login failed:", error.message);
+    return res.status(500).json({ error: "Unable to sign in right now." });
+  }
+});
+app.post("/api/auth/google", async (req, res) => {
+  if (!(await ensureDatabaseForAuth(res))) return;
+  if (!GOOGLE_CLIENT_ID) return res.status(503).json({ error: "Google sign-in is not configured on the server yet." });
+  const credential = String(req.body?.credential || "");
+  if (!credential || credential.length > 10000) return res.status(400).json({ error: "A valid Google credential is required." });
+  try {
+    const verifyResponse = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(credential)}`);
+    const claims = await verifyResponse.json().catch(() => ({}));
+    if (!verifyResponse.ok || claims.aud !== GOOGLE_CLIENT_ID || claims.email_verified !== "true" || !claims.sub || !claims.email) {
+      return res.status(401).json({ error: "Google could not verify this account. Please try again." });
+    }
+    const email = String(claims.email).toLowerCase();
+    const fullName = String(claims.name || email.split("@")[0]).trim().slice(0, 80) || "Tech Battle Player";
+    const googleSub = String(claims.sub);
+    let found = await dbPool.query("SELECT user_id, profile_id, email, username, full_name FROM users WHERE google_sub = $1 OR LOWER(email) = LOWER($2) LIMIT 1", [googleSub, email]);
+    let row = found.rows[0];
+    if (row) {
+      const updated = await dbPool.query("UPDATE users SET google_sub = COALESCE(google_sub, $1), updated_at = NOW() WHERE user_id = $2 RETURNING user_id, profile_id, email, username, full_name", [googleSub, row.user_id]);
+      row = updated.rows[0];
+    } else {
+      const base = String(claims.given_name || fullName.split(/\s+/)[0] || "player").toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 12) || "player";
+      let username = base;
+      for (let i = 0; i < 30; i++) {
+        const check = await dbPool.query("SELECT 1 FROM users WHERE LOWER(username) = LOWER($1)", [username]);
+        if (!check.rowCount) break;
+        username = `${base.slice(0, 11)}${crypto.randomInt(0, 10)}`;
+      }
+      const userId = `usr_${crypto.randomBytes(18).toString("hex")}`;
+      const profileId = `tb_${crypto.randomBytes(20).toString("hex")}`;
+      const inserted = await dbPool.query(
+        `INSERT INTO users (user_id, profile_id, email, username, full_name, google_sub)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING user_id, profile_id, email, username, full_name`,
+        [userId, profileId, email, username, fullName, googleSub]
+      );
+      row = inserted.rows[0];
+      await dbPool.query("INSERT INTO player_profiles (profile_id, profile) VALUES ($1, $2::jsonb) ON CONFLICT (profile_id) DO NOTHING", [profileId, JSON.stringify({ version: 1, name: username, gamesPlayed: 0, dailyChallenges: 0, answered: 0, correct: 0, score: 0, highestScore: 0, categories: {}, difficulties: {}, history: [] })]);
+    }
+    return makeAccountSession(row, res);
+  } catch (error) {
+    if (error.code === "23505") return res.status(409).json({ error: "This Google account is already linked to another account." });
+    console.error("[Auth] Google sign-in failed:", error.message);
+    return res.status(500).json({ error: "Google sign-in could not be completed." });
+  }
+});
+app.get("/api/auth/me", (req, res) => {
+  const user = getAuthFromRequest(req);
+  if (!user) return res.status(401).json({ error: "Please sign in again." });
+  return res.json({ user: { id: user.sub, profileId: user.profileId, email: user.email, username: user.username, name: user.name } });
+});
+
+async function checkProfileAccess(req, res, profileId) {
+  const auth = getAuthFromRequest(req);
+  if (auth) {
+    if (auth.profileId !== profileId) {
+      res.status(403).json({ error: "This profile belongs to a different account." });
+      return false;
+    }
+    return true;
+  }
+  if (dbPool && databaseReady) {
+    try {
+      const account = await dbPool.query("SELECT 1 FROM users WHERE profile_id = $1 LIMIT 1", [profileId]);
+      if (account.rowCount) {
+        res.status(401).json({ error: "Please sign in to access this profile." });
+        return false;
+      }
+    } catch (error) {
+      console.error("[Auth] Profile access check failed:", error.message);
+      res.status(500).json({ error: "Unable to verify profile access." });
+      return false;
+    }
+  }
+  return true;
+}
+
 /* ---------- PHASE 3 PROFILE PERSISTENCE ---------- */
 app.get("/api/profiles/:profileId", async (req, res) => {
   const profileId = String(req.params.profileId || "");
   if (!/^[a-zA-Z0-9_-]{16,80}$/.test(profileId)) {
     return res.status(400).json({ error: "Invalid profile ID." });
   }
+  if (!(await checkProfileAccess(req, res, profileId))) return;
   if (!dbPool || !databaseReady) {
     return res.status(503).json({ error: "Database persistence is not available." });
   }
@@ -5349,6 +5533,7 @@ app.put("/api/profiles/:profileId", async (req, res) => {
   if (!/^[a-zA-Z0-9_-]{16,80}$/.test(profileId)) {
     return res.status(400).json({ error: "Invalid profile ID." });
   }
+  if (!(await checkProfileAccess(req, res, profileId))) return;
   if (!dbPool || !databaseReady) {
     return res.status(503).json({ error: "Database persistence is not available." });
   }
@@ -5379,6 +5564,7 @@ app.post("/api/profiles/:profileId/matches", async (req, res) => {
   if (!/^[a-zA-Z0-9_-]{16,80}$/.test(profileId)) {
     return res.status(400).json({ error: "Invalid profile ID." });
   }
+  if (!(await checkProfileAccess(req, res, profileId))) return;
   if (!dbPool || !databaseReady) {
     return res.status(503).json({ error: "Database persistence is not available." });
   }
@@ -5410,6 +5596,7 @@ app.get("/api/profiles/:profileId/matches", async (req, res) => {
   if (!/^[a-zA-Z0-9_-]{16,80}$/.test(profileId)) {
     return res.status(400).json({ error: "Invalid profile ID." });
   }
+  if (!(await checkProfileAccess(req, res, profileId))) return;
   if (!dbPool || !databaseReady) {
     return res.status(503).json({ error: "Database persistence is not available." });
   }
@@ -5432,6 +5619,7 @@ app.post("/api/profiles/:profileId/daily-attempts", async (req, res) => {
   if (!/^[a-zA-Z0-9_-]{16,80}$/.test(profileId)) {
     return res.status(400).json({ error: "Invalid profile ID." });
   }
+  if (!(await checkProfileAccess(req, res, profileId))) return;
   if (!dbPool || !databaseReady) {
     return res.status(503).json({ error: "Database persistence is not available." });
   }
@@ -5464,6 +5652,7 @@ app.get("/api/profiles/:profileId/daily-attempts", async (req, res) => {
   if (!/^[a-zA-Z0-9_-]{16,80}$/.test(profileId)) {
     return res.status(400).json({ error: "Invalid profile ID." });
   }
+  if (!(await checkProfileAccess(req, res, profileId))) return;
   if (!dbPool || !databaseReady) {
     return res.status(503).json({ error: "Database persistence is not available." });
   }

@@ -10,6 +10,7 @@ import { createRoot } from "react-dom/client";
 import { io } from "socket.io-client";
 
 import "./styles.css";
+import "./styles-auth.css";
 
 
 // --------------------------------------------------
@@ -98,16 +99,33 @@ const BATTLE_FORMATS = {
 
 const PROFILE_KEY = "techBattleProfile";
 const PROFILE_ID_KEY = "techBattleProfileId";
+const AUTH_KEY = "techBattleAuth";
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || "";
 const SCREEN_KEY = "techBattleLastScreen";
 
 function getInitialScreen() {
   try {
+    if (!localStorage.getItem(AUTH_KEY)) return "auth";
     // Restore only the Profile screen. Temporary screens (questions, results,
     // countdowns, and room setup) should not be replayed after a page refresh.
     return sessionStorage.getItem(SCREEN_KEY) === "profile" ? "profile" : "home";
   } catch {
     return "home";
   }
+}
+
+function readAuthSession() {
+  try {
+    const value = JSON.parse(localStorage.getItem(AUTH_KEY) || "null");
+    return value?.token && value?.user?.profileId ? value : null;
+  } catch {
+    return null;
+  }
+}
+
+function authHeaders() {
+  const session = readAuthSession();
+  return session?.token ? { Authorization: `Bearer ${session.token}` } : {};
 }
 
 function getStableProfileId() {
@@ -122,7 +140,7 @@ function getStableProfileId() {
 async function loadRemoteProfile() {
   try {
     const id = getStableProfileId();
-    const response = await fetch(`${SERVER_URL}/api/profiles/${encodeURIComponent(id)}`);
+    const response = await fetch(`${SERVER_URL}/api/profiles/${encodeURIComponent(id)}`, { headers: authHeaders() });
     if (!response.ok) return null;
     const data = await response.json();
     return data?.profile && typeof data.profile === "object" ? data.profile : null;
@@ -136,7 +154,7 @@ async function saveRemoteProfile(profile) {
     const id = getStableProfileId();
     const response = await fetch(`${SERVER_URL}/api/profiles/${encodeURIComponent(id)}`, {
       method: "PUT",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", ...authHeaders() },
       body: JSON.stringify({ profile })
     });
     if (!response.ok) {
@@ -158,7 +176,7 @@ async function saveRemoteRecord(kind, record) {
       `${SERVER_URL}/api/profiles/${encodeURIComponent(id)}/${endpoint}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", ...authHeaders() },
         body: JSON.stringify({ record })
       }
     );
@@ -363,6 +381,16 @@ function applyDailyStreak(profile) {
 // --------------------------------------------------
 
 function App() {
+  const [authSession, setAuthSession] = useState(() => readAuthSession());
+  const [authView, setAuthView] = useState("login");
+  const [authFullName, setAuthFullName] = useState("");
+  const [authUsername, setAuthUsername] = useState("");
+  const [authEmail, setAuthEmail] = useState("");
+  const [authPassword, setAuthPassword] = useState("");
+  const [authConfirmPassword, setAuthConfirmPassword] = useState("");
+  const [authBusy, setAuthBusy] = useState(false);
+  const [authError, setAuthError] = useState("");
+  const googleButtonRef = useRef(null);
   const [screen, setScreen] = useState(getInitialScreen);
 
   const [mode, setMode] = useState(null);
@@ -444,6 +472,127 @@ function App() {
   const [dailySelectedAnswer, setDailySelectedAnswer] = useState(null);
   const [dailyTimeRemaining, setDailyTimeRemaining] = useState(20);
   const [dailyBusy, setDailyBusy] = useState(false);
+
+  // Reject expired or invalid saved account tokens instead of leaving the app in a stale signed-in state.
+  useEffect(() => {
+    if (!authSession?.token) return;
+    let cancelled = false;
+    fetch(`${SERVER_URL}/api/auth/me`, { headers: { Authorization: `Bearer ${authSession.token}` } })
+      .then((response) => {
+        if (!response.ok) throw new Error("Session expired");
+        return response.json();
+      })
+      .then((data) => {
+        if (cancelled || !data?.user) return;
+        if (data.user.profileId !== authSession.user.profileId) throw new Error("Account session mismatch");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        localStorage.removeItem(AUTH_KEY);
+        setAuthSession(null);
+        setScreen("auth");
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Configure Google's official Identity Services button when a client ID is supplied.
+  useEffect(() => {
+    if (screen !== "auth" || !GOOGLE_CLIENT_ID || !googleButtonRef.current) return;
+    let cancelled = false;
+    const renderGoogleButton = () => {
+      if (cancelled || !googleButtonRef.current || !window.google?.accounts?.id) return;
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: async (response) => {
+          if (!response?.credential) return;
+          await completeAuth("/api/auth/google", { credential: response.credential });
+        },
+        auto_select: false
+      });
+      googleButtonRef.current.innerHTML = "";
+      window.google.accounts.id.renderButton(googleButtonRef.current, {
+        theme: "filled_white", size: "large", shape: "rectangular", text: "continue_with", width: 320
+      });
+    };
+    if (window.google?.accounts?.id) {
+      renderGoogleButton();
+    } else {
+      let script = document.querySelector('script[data-google-identity="true"]');
+      if (!script) {
+        script = document.createElement("script");
+        script.src = "https://accounts.google.com/gsi/client";
+        script.async = true;
+        script.defer = true;
+        script.dataset.googleIdentity = "true";
+        document.head.appendChild(script);
+      }
+      script.addEventListener("load", renderGoogleButton);
+      return () => { cancelled = true; script.removeEventListener("load", renderGoogleButton); };
+    }
+    return () => { cancelled = true; };
+  }, [screen, authView]);
+
+  async function completeAuth(endpoint, payload) {
+    setAuthBusy(true);
+    setAuthError("");
+    try {
+      const response = await fetch(`${SERVER_URL}${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data?.token || !data?.user?.profileId) {
+        throw new Error(data?.error || "Authentication failed. Please try again.");
+      }
+      localStorage.setItem(AUTH_KEY, JSON.stringify(data));
+      localStorage.setItem(PROFILE_ID_KEY, data.user.profileId);
+      setAuthSession(data);
+      setName(data.user.username || data.user.name || "Player");
+      nameRef.current = data.user.username || data.user.name || "Player";
+      const remote = await loadRemoteProfile();
+      const nextProfile = {
+        ...createEmptyProfile(),
+        ...(remote || loadProfile()),
+        name: data.user.username || data.user.name || "Player",
+        categories: (remote || loadProfile()).categories || {},
+        difficulties: (remote || loadProfile()).difficulties || {},
+        history: Array.isArray((remote || loadProfile()).history) ? (remote || loadProfile()).history : []
+      };
+      setProfile(nextProfile);
+      saveProfile(nextProfile);
+      setAuthPassword("");
+      setAuthConfirmPassword("");
+      setScreen("home");
+    } catch (error) {
+      setAuthError(error?.message || "Unable to sign in.");
+    } finally {
+      setAuthBusy(false);
+    }
+  }
+
+  const submitEmailAuth = async (event) => {
+    event.preventDefault();
+    if (authView === "signup") {
+      if (authFullName.trim().length < 2) return setAuthError("Enter your full name.");
+      if (!/^[A-Za-z0-9_]{3,16}$/.test(authUsername.trim())) return setAuthError("Username must be 3–16 letters, numbers, or underscores.");
+      if (authPassword.length < 8) return setAuthError("Password must contain at least 8 characters.");
+      if (authPassword !== authConfirmPassword) return setAuthError("Passwords do not match.");
+      await completeAuth("/api/auth/signup", {
+        name: authFullName.trim(), username: authUsername.trim(), email: authEmail.trim(), password: authPassword
+      });
+    } else {
+      await completeAuth("/api/auth/login", { email: authEmail.trim(), password: authPassword });
+    }
+  };
+
+  const signOut = () => {
+    localStorage.removeItem(AUTH_KEY);
+    setAuthSession(null);
+    setAuthError("");
+    setScreen("auth");
+    setAuthView("login");
+  };
 
   // Remember the Profile page across refreshes, but never persist temporary
   // gameplay screens. Existing socket/session restoration remains in control
@@ -1308,6 +1457,52 @@ function App() {
 
 
   // --------------------------------------------------
+  // LOGIN / SIGNUP
+  // --------------------------------------------------
+
+  if (screen === "auth" || !authSession) {
+    return (
+      <Shell hideFooter>
+        <div className="auth-page">
+          <div className="auth-glow auth-glow-one" />
+          <div className="auth-glow auth-glow-two" />
+          <section className="auth-card">
+            <div className="auth-brand-mark">⚡</div>
+            <div className="auth-eyebrow">REAL-TIME MULTIPLAYER QUIZ</div>
+            <h1>TECH <span>BATTLE</span></h1>
+            <p className="auth-subtitle">Enter the arena. Challenge your friends. Prove your skills.</p>
+            <div className="auth-tabs">
+              <button type="button" className={authView === "login" ? "active" : ""} onClick={() => { setAuthView("login"); setAuthError(""); }}>Log in</button>
+              <button type="button" className={authView === "signup" ? "active" : ""} onClick={() => { setAuthView("signup"); setAuthError(""); }}>Create account</button>
+            </div>
+            <div className="auth-google-area">
+              {GOOGLE_CLIENT_ID ? <div ref={googleButtonRef} className="auth-google-button" /> : (
+                <button type="button" className="auth-google-fallback" onClick={() => setAuthError("Google sign-in is not configured yet. Add VITE_GOOGLE_CLIENT_ID to the frontend environment and GOOGLE_CLIENT_ID to the backend environment.")}>
+                  <span className="google-g">G</span> Continue with Google
+                </button>
+              )}
+            </div>
+            <div className="auth-divider"><span>OR CONTINUE WITH EMAIL</span></div>
+            <form className="auth-form" onSubmit={submitEmailAuth}>
+              {authView === "signup" && <>
+                <label>Full name<input value={authFullName} onChange={(event) => setAuthFullName(event.target.value)} autoComplete="name" placeholder="Your full name" maxLength={80} required /></label>
+                <label>Username<input value={authUsername} onChange={(event) => setAuthUsername(event.target.value)} autoComplete="username" placeholder="Choose a username" maxLength={16} required /></label>
+              </>}
+              <label>Email address<input type="email" value={authEmail} onChange={(event) => setAuthEmail(event.target.value)} autoComplete="email" placeholder="you@example.com" maxLength={254} required /></label>
+              <label>Password<input type="password" value={authPassword} onChange={(event) => setAuthPassword(event.target.value)} autoComplete={authView === "signup" ? "new-password" : "current-password"} placeholder={authView === "signup" ? "At least 8 characters" : "Enter your password"} minLength={authView === "signup" ? 8 : 1} required /></label>
+              {authView === "signup" && <label>Confirm password<input type="password" value={authConfirmPassword} onChange={(event) => setAuthConfirmPassword(event.target.value)} autoComplete="new-password" placeholder="Re-enter your password" minLength={8} required /></label>}
+              {authError && <div className="auth-error" role="alert">{authError}</div>}
+              <button className="auth-submit" type="submit" disabled={authBusy}>{authBusy ? "Please wait…" : authView === "signup" ? "CREATE ACCOUNT →" : "LOG IN →"}</button>
+            </form>
+            <p className="auth-switch">{authView === "signup" ? "Already have an account?" : "New to Tech Battle?"} <button type="button" onClick={() => { setAuthView(authView === "signup" ? "login" : "signup"); setAuthError(""); }}>{authView === "signup" ? "Log in" : "Create account"}</button></p>
+            <p className="auth-terms">Your progress, match history, and daily challenges will be linked to your account.</p>
+          </section>
+        </div>
+      </Shell>
+    );
+  }
+
+  // --------------------------------------------------
   // RESTORING SESSION
   // --------------------------------------------------
 
@@ -1343,6 +1538,7 @@ function App() {
             <div className="home-subtitle">
               REAL-TIME MULTIPLAYER TECHNOLOGY QUIZ
             </div>
+            {authSession?.user && <div className="auth-home-user">Signed in as <strong>{authSession.user.username || authSession.user.name}</strong><button type="button" onClick={signOut}>Log out</button></div>}
 
             <div className="button-stack">
               <button
