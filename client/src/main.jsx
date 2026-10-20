@@ -10,7 +10,7 @@ import { createRoot } from "react-dom/client";
 import { io } from "socket.io-client";
 
 import "./styles.css";
-import "./styles-auth.css";
+
 
 
 // --------------------------------------------------
