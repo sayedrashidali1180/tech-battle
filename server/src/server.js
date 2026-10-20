@@ -61,8 +61,18 @@ async function initializeDatabase() {
     CREATE INDEX IF NOT EXISTS daily_attempts_profile_date_idx
     ON daily_challenge_attempts (profile_id, date_key DESC)
   `);
+  await dbPool.query(`
+    CREATE TABLE IF NOT EXISTS question_usage (
+      question_id VARCHAR(240) PRIMARY KEY,
+      last_used_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+  await dbPool.query(`
+    CREATE INDEX IF NOT EXISTS question_usage_last_used_idx
+    ON question_usage (last_used_at DESC)
+  `);
   databaseReady = true;
-  console.log("[Database] PostgreSQL ready: profiles, match history, daily attempts.");
+  console.log("[Database] PostgreSQL ready: profiles, match history, daily attempts, question usage.");
 }
 
 
@@ -1947,6 +1957,53 @@ function shuffle(array) {
   return result;
 }
 
+// Remember questions across matches so the next quiz can prefer fresh ones.
+// PostgreSQL keeps this history across server restarts; memory is the fallback.
+const recentQuestionIds = new Set();
+const QUESTION_HISTORY_LIMIT = 500;
+
+async function getRecentlyUsedQuestionIds() {
+  if (dbPool && databaseReady) {
+    try {
+      const result = await dbPool.query(
+        `SELECT question_id FROM question_usage
+         ORDER BY last_used_at DESC LIMIT $1`,
+        [QUESTION_HISTORY_LIMIT]
+      );
+      return new Set(result.rows.map((row) => row.question_id));
+    } catch (error) {
+      console.error(`[Questions] Could not read usage history: ${error.message}`);
+    }
+  }
+  return new Set(recentQuestionIds);
+}
+
+async function rememberQuestionsUsed(questions) {
+  const ids = [...new Set((questions || []).map((item) => item?.id).filter(Boolean))];
+  if (!ids.length) return;
+
+  for (const id of ids) {
+    recentQuestionIds.delete(id);
+    recentQuestionIds.add(id);
+  }
+  while (recentQuestionIds.size > QUESTION_HISTORY_LIMIT) {
+    recentQuestionIds.delete(recentQuestionIds.values().next().value);
+  }
+
+  if (dbPool && databaseReady) {
+    try {
+      await dbPool.query(
+        `INSERT INTO question_usage (question_id, last_used_at)
+         SELECT question_id, NOW() FROM UNNEST($1::text[]) AS question_id
+         ON CONFLICT (question_id) DO UPDATE SET last_used_at = EXCLUDED.last_used_at`,
+        [ids]
+      );
+    } catch (error) {
+      console.error(`[Questions] Could not save usage history: ${error.message}`);
+    }
+  }
+}
+
 function cleanName(value) {
   const name = String(value || "")
     .trim()
@@ -1992,7 +2049,7 @@ function generateRoomCode() {
    QUIZBASE QUESTION FETCH
 ============================================================ */
 
-async function fetchQuizBaseQuestions(room) {
+async function fetchQuizBaseQuestions(room, recentlyUsedIds = new Set()) {
   if (!QUIZBASE_API_KEY) {
     throw new Error("QUIZBASE_API_KEY is not configured.");
   }
@@ -2108,7 +2165,11 @@ async function fetchQuizBaseQuestions(room) {
   }
 
   const selected = [];
-  const remaining = shuffle([...filtered]);
+  // Randomize first, then prioritize questions not seen in recent matches.
+  // If the API's fresh pool is small, previously used questions remain eligible.
+  const remaining = shuffle([...filtered]).sort((a, b) =>
+    Number(recentlyUsedIds.has(a.id)) - Number(recentlyUsedIds.has(b.id))
+  );
 
   while (
     selected.length < QUIZBASE_QUESTION_COUNT &&
@@ -2123,11 +2184,12 @@ async function fetchQuizBaseQuestions(room) {
       );
     }
 
-    remaining.sort(
-      (a, b) =>
-        (categoryCounts.get(a.category) || 0) -
-        (categoryCounts.get(b.category) || 0)
-    );
+    remaining.sort((a, b) => {
+      const recentDifference = Number(recentlyUsedIds.has(a.id)) - Number(recentlyUsedIds.has(b.id));
+      if (recentDifference !== 0) return recentDifference;
+      return (categoryCounts.get(a.category) || 0) -
+        (categoryCounts.get(b.category) || 0);
+    });
 
     selected.push(remaining.shift());
   }
@@ -2167,7 +2229,8 @@ function shuffleQuestionOptions(question) {
 }
 
 function createGameQuestions(
-  roomOrQuizType = "mixed"
+  roomOrQuizType = "mixed",
+  recentlyUsedIds = new Set()
 ) {
   const isRoom =
     typeof roomOrQuizType === "object" &&
@@ -2223,25 +2286,24 @@ function createGameQuestions(
     for (const category of shuffle(
       config.categories
     )) {
-      const candidates =
-        shuffle(
-          QUESTION_BANK.filter(
-            (item) =>
-              item.category ===
-                category &&
-              item.difficulty ===
-                difficulty &&
-              !usedQuestionIds.has(
-                item.id
-              )
-          )
-        );
+      const allCandidates = shuffle(
+        QUESTION_BANK.filter(
+          (item) =>
+            item.category === category &&
+            item.difficulty === difficulty &&
+            !usedQuestionIds.has(item.id)
+        )
+      );
+      // Use unseen questions first; repeat an older question only when needed.
+      const freshCandidates = allCandidates.filter(
+        (item) => !recentlyUsedIds.has(item.id)
+      );
+      const candidates = freshCandidates.length
+        ? freshCandidates
+        : allCandidates;
 
       if (candidates.length) {
-        candidatesByCategory.set(
-          category,
-          candidates
-        );
+        candidatesByCategory.set(category, candidates);
       }
     }
 
@@ -2852,11 +2914,12 @@ async function startCountdown(room) {
   let questions;
   let questionSource =
     "local-fallback";
+  const recentlyUsedIds = await getRecentlyUsedQuestionIds();
 
   try {
     // Exactly ONE QuizBase request for the whole match.
     questions =
-      await fetchQuizBaseQuestions(room);
+      await fetchQuizBaseQuestions(room, recentlyUsedIds);
 
     questionSource =
       "quizbase";
@@ -2872,7 +2935,7 @@ async function startCountdown(room) {
     );
 
     questions =
-      createGameQuestions(room);
+      createGameQuestions(room, recentlyUsedIds);
 
     console.log(
       `[QuizBase] Using local question bank for room ${room.code}.`
@@ -2881,6 +2944,13 @@ async function startCountdown(room) {
 
   room.questions =
     questions;
+
+  // Record once per match. All players in this room share this same question set.
+  void rememberQuestionsUsed(questions);
+
+  console.log(
+    `[Questions] Selected ${questions.length} questions (${questions.filter((item) => !recentlyUsedIds.has(item.id)).length} not in recent history) for room ${room.code}.`
+  );
 
   room.questionSource =
     questionSource;
